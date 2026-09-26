@@ -209,14 +209,14 @@ func TestReviewLensNeedsBothProbesForNo(t *testing.T) {
 func TestGatesSharingEvidenceAreScoredTogether(t *testing.T) {
 	f := &fakeScorer{probs: map[string][]float64{
 		"tpp": make([]float64, 8), "multi": {1, 0}, "cheating": {0, 1},
-		"review-ddd": {1, 0}, "review-ddd~clean": {1, 0},
+		"review-smells": {1, 0}, "review-smells~clean": {1, 0},
 	}}
 	_, err := Judge{f}.Evaluate(context.Background(), Evidence{PartTest: "t", PartDiff: "d"},
-		[]string{"tpp", "cheating", "multi", "review-ddd"})
+		[]string{"tpp", "cheating", "multi", "review-smells"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(f.calls) != 2 || strings.Join(f.calls[0], ",") != "tpp,multi,review-ddd,review-ddd~clean" || strings.Join(f.calls[1], ",") != "cheating" {
+	if len(f.calls) != 2 || strings.Join(f.calls[0], ",") != "tpp,multi,review-smells,review-smells~clean" || strings.Join(f.calls[1], ",") != "cheating" {
 		t.Fatalf("calls %v", f.calls)
 	}
 }

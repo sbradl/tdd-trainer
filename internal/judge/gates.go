@@ -78,9 +78,9 @@ var refactorEffectOptions = []Option{
 	{"worsens", "The code is harder to read or change afterwards: vaguer names, needless indirection or abstraction, more duplication, denser or trickier expressions."},
 }
 
-// Lenses are the review lenses used for missed-refactor hints.
+// Lenses are the review lenses used for missed-refactor hints. Domain
+// design is left out: a design question above the level of one TDD cycle.
 var Lenses = map[string]string{
-	"review-ddd":        "Domain-Driven Design: names that drift from the domain's language, business rules living outside the type that owns the data (anemic model), domain concepts passed around as raw strings, numbers or booleans (primitive obsession), missing value objects, logic in the wrong layer, external data shapes leaking into the domain",
 	"review-smells":     "code smells (Fowler): duplicated code, long function, long parameter list, feature envy, data clumps, primitive obsession, repeated switches, shotgun surgery, divergent change, speculative generality, message chains, dead code",
 	"review-clean-code": "Clean Code (Martin): unclear, cryptic or misleading names, magic numbers, functions doing more than one thing, too many arguments, flag arguments, side effects, comments explaining bad code, inconsistent formatting",
 	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), coupling and Law of Demeter violations (reaching through objects), environment-specific values hard-coded in code (hosts, URLs, paths, credentials, limits) that belong in configuration, orthogonality breaks, programming by coincidence, broken windows left unfixed",
@@ -112,14 +112,6 @@ var LensProblems = map[string][]Option{
 		{"side-effects", "Hidden side effects."},
 		{"comments", "Comments that explain unclear code instead of clarifying it."},
 		{"formatting", "Inconsistent formatting."},
-	},
-	"review-ddd": {
-		{"names", "Names drift from the domain's language."},
-		{"anemic", "Anemic model: business rules live outside the type that owns the data."},
-		{"primitive-obsession", "Domain concepts such as money or IDs passed around as raw strings, numbers or booleans."},
-		{"value-object", "A missing value object that would group and validate related values."},
-		{"wrong-layer", "Logic in the wrong layer."},
-		{"leaking-shapes", "External data shapes leak into the domain."},
 	},
 	"review-pragmatic": {
 		{"dry", "Duplicated knowledge (DRY): the same fact or rule is written in more than one place."},

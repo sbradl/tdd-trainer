@@ -128,7 +128,6 @@ func finishRefactor(vs map[string]judge.Verdict) []Verdict {
 }
 
 var lensTitle = map[string]string{
-	"review-ddd":        "domain design",
 	"review-smells":     "code smells",
 	"review-clean-code": "clean code",
 	"review-pragmatic":  "pragmatic design",
