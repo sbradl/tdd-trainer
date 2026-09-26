@@ -400,7 +400,7 @@ func smellyKata(t *testing.T) *kata {
 func TestRefactorOpportunityRightAfterGreen(t *testing.T) {
 	k := smellyKata(t)
 	v := k.last(2, "refactor opportunity")
-	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "Repeated conditionals") || !strings.Contains(v.Text, "while the tests are green") {
+	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "Repeated conditionals") || !strings.HasPrefix(v.Text, "Worth refactoring kata.go now, while the tests are green") {
 		t.Fatalf("got %+v", v)
 	}
 }
@@ -426,7 +426,7 @@ func TestRefactoringSomethingElseKeepsTheHint(t *testing.T) {
 	k.write("kata.go", "package kata\n\n// Roman converts n.\nfunc Roman(n int) string {\n\tif n == 2 {\n\t\treturn \"II\"\n\t}\n\treturn \"I\"\n}\n")
 	k.run("TestOne TestTwo")
 	k.drain()
-	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != Hint || !strings.HasPrefix(v.Text, "Still there after your last change") {
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != Hint || !strings.HasPrefix(v.Text, "Still there in kata.go after your last change") {
 		t.Fatalf("got %+v", v)
 	}
 }
@@ -437,7 +437,7 @@ func TestSkippingTheRefactorIsMissed(t *testing.T) {
 	k.run("TestOne TestTwo TestThree", "TestThree")
 	k.drain()
 	v := k.last(3, "missed refactor")
-	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "without cleaning up after step 2") || !strings.Contains(v.Text, "Repeated conditionals") {
+	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "without cleaning up kata.go after step 2") || !strings.Contains(v.Text, "Repeated conditionals") {
 		t.Fatalf("got %+v", v)
 	}
 }
@@ -460,6 +460,14 @@ func TestMissedRefactorWhenTheReviewIsStillRunning(t *testing.T) {
 	k.drain()
 	if v := k.last(3, "missed refactor"); v == nil || v.Level != Hint || !strings.Contains(v.Text, "Duplicated code") {
 		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestWhereNamesTheProductionFiles(t *testing.T) {
+	for files, want := range map[string]string{"": "the production code", "a.go": "a.go", "a.go b.go": "a.go and b.go", "a.go b.go c.go": "the production code"} {
+		if got := where(strings.Fields(files)); got != want {
+			t.Errorf("%q: got %q, want %q", files, got, want)
+		}
 	}
 }
 

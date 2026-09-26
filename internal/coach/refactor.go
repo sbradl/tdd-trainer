@@ -18,6 +18,7 @@ import (
 // refactorIssue is the review result of the last Green. Guarded by Coach.mu.
 type refactorIssue struct {
 	green    steps.Step
+	where    string   // the production files the Green changed, e.g. "roman.go"
 	reviewed bool     // the lenses have answered
 	lenses   []string // lenses that found something; empty: nothing to do
 	problem  string   // what to refactor, for the texts
@@ -32,9 +33,10 @@ type refactorIssue struct {
 
 const opportunity = "refactor opportunity"
 
-// reviewGreen queues the review lenses on a finished Green's diff.
-func (c *Coach) reviewGreen(g steps.Step, diff string) {
-	issue := &refactorIssue{green: g}
+// reviewGreen queues the review lenses on a finished Green's production
+// code diff; files are the production files it changed.
+func (c *Coach) reviewGreen(g steps.Step, diff string, files []string) {
+	issue := &refactorIssue{green: g, where: where(files)}
 	c.mu.Lock()
 	c.issue = issue
 	c.mu.Unlock()
@@ -60,7 +62,7 @@ func (c *Coach) reviewGreen(g steps.Step, diff string) {
 				finish: func(ws map[string]judge.Verdict) []Verdict {
 					problem, problems := problemText(found, ws)
 					return c.reviewed(issue, found, problem, problems, Verdict{Check: opportunity, Level: Hint, P: maxP, Text: fmt.Sprintf(
-						"Worth refactoring now, while the tests are green: %s The hint updates as you refactor (tddt show %d).", problem, g.N)})
+						"Worth refactoring %s now, while the tests are green: %s The hint updates as you refactor (tddt show %d).", issue.where, problem, g.N)})
 				}})
 			return nil
 		}})
@@ -150,7 +152,7 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 				v = Verdict{Check: opportunity, Level: OK, Text: "Resolved: your refactoring removed " + lowerFirst(issue.problem)}
 			case open > 0:
 				issue.resolved = false
-				v = Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf("Still there after your last change: %s (tddt show %d)", issue.problem, g.N)}
+				v = Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf("Still there in %s after your last change: %s (tddt show %d)", issue.where, issue.problem, g.N)}
 			default:
 				return nil // not sure either way: keep the last verdict
 			}
@@ -198,7 +200,7 @@ func missedVerdict(issue *refactorIssue) Verdict {
 		return Verdict{Check: "missed refactor", Level: OK, Text: fmt.Sprintf("You cleaned up after step %d before writing this test.", issue.green.N)}
 	}
 	return Verdict{Check: "missed refactor", Level: Hint, Text: fmt.Sprintf(
-		"You started this test without cleaning up after step %d: %s Refactor once this test passes (tddt show %d).", issue.green.N, issue.problem, issue.green.N)}
+		"You started this test without cleaning up %s after step %d: %s Refactor once this test passes (tddt show %d).", issue.where, issue.green.N, issue.problem, issue.green.N)}
 }
 
 // problemText names the one or two clearest problems the lenses found,
@@ -251,4 +253,18 @@ func problemText(lenses []string, which map[string]judge.Verdict) (string, []str
 		names = append(names, lowerFirst(strings.TrimSuffix(short, ".")))
 	}
 	return strings.Join(names, ", and ") + ".", descs
+}
+
+// where names the production files a hint is about, so nobody looks for
+// the problem in the tests.
+func where(files []string) string {
+	switch len(files) {
+	case 0:
+		return "the production code"
+	case 1:
+		return files[0]
+	case 2:
+		return files[0] + " and " + files[1]
+	}
+	return "the production code"
 }

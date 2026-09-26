@@ -310,7 +310,13 @@ func (c *Coach) Step(s steps.Step) error {
 			exact("tpp", OK, "No production code changed.")
 			return nil
 		}
-		c.reviewGreen(s, sourceDiff)
+		var files []string
+		for _, d := range diffs {
+			if d.Kind == config.Source {
+				files = append(files, d.Path)
+			}
+		}
+		c.reviewGreen(s, sourceDiff, files)
 		ev := judge.Evidence{judge.PartDiff: sourceDiff}
 		gates := []string{"tpp", "multi"}
 		if red != nil {

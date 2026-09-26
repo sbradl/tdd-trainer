@@ -101,7 +101,7 @@ Wrote .tddtrainer.yml.
 
 ![Refactor now: the review names what to clean up](docs/screenshots/refactor-now.svg)
 
-Each green save while you refactor re-checks it. A cosmetic change gets "Still there after your last change". Replacing the `if`s with `strings.Repeat("I", n)` resolves it, and the card goes away with a confirmation:
+Each green save while you refactor re-checks it. A cosmetic change gets "Still there in roman.go after your last change". Replacing the `if`s with `strings.Repeat("I", n)` resolves it, and the card goes away with a confirmation:
 
 ![Resolved after refactoring](docs/screenshots/resolved.svg)
 
@@ -146,7 +146,7 @@ tests (0.3s): all green
 » step 4: Green
 changed: roman.go
 tests (0.5s): all green
-  HINT step 4 (Green) Refactor now: Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 4).
+  HINT step 4 (Green) Refactor now: Worth refactoring roman.go now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 4).
   RESOLVED step 4 (Green) Refactor now: Resolved: your refactoring removed special-case code mixed into general code, and magic numbers or strings.
 changed: roman_test.go
 tests (0.1s): all green
@@ -233,8 +233,8 @@ It gives no scores.
 >
 > **Focus tips**
 >
-> 1. **Refactor after Green** (2×): You started this test without cleaning up after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
-> 2. **Refactor now** (2×): Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9).
+> 1. **Refactor after Green** (2×): You started this test without cleaning up roman.go after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
+> 2. **Refactor now** (2×): Worth refactoring roman.go now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9).
 > 3. **Cycle rhythm** (1×): Several new tests in one step: write one failing test at a time.
 >
 > **Transformation path**

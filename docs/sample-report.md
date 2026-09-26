@@ -6,8 +6,8 @@
 
 ## Focus tips
 
-1. **Refactor after Green** (2×): You started this test without cleaning up after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
-2. **Refactor now** (2×): Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9).
+1. **Refactor after Green** (2×): You started this test without cleaning up roman.go after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
+2. **Refactor now** (2×): Worth refactoring roman.go now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9).
 3. **Cycle rhythm** (1×): Several new tests in one step: write one failing test at a time.
 
 ## Cycles
@@ -24,7 +24,7 @@
 | Step | Kind | Verdicts |
 |---|---|---|
 | 3 | Red — roman::TestTwo | ✓ **One new test**: Exactly one new failing test: roman::TestTwo.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>✓ **One behaviour per test**: The test checks a single behaviour.<br>✓ **Refactor after Green**: Nothing needed refactoring before this test. |
-| 4 | Green | ✓ **Transformation**: Applied Unconditional → Selection (4/8).<br>✓ **Simplest change**: The test needed a simple change and the code made one: no bigger than necessary.<br>✓ **One transformation**: One transformation, as a single new test should need.<br>➜ **Refactor now**: Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 4). |
+| 4 | Green | ✓ **Transformation**: Applied Unconditional → Selection (4/8).<br>✓ **Simplest change**: The test needed a simple change and the code made one: no bigger than necessary.<br>✓ **One transformation**: One transformation, as a single new test should need.<br>➜ **Refactor now**: Worth refactoring roman.go now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 4). |
 
 <details><summary>Step 4 diff</summary>
 
@@ -50,7 +50,7 @@ index 847de54d816493d3b35bcab1609573c778c6e73c..b7dd9f3eef2d0f001b30f3d85913c5da
 
 | Step | Kind | Verdicts |
 |---|---|---|
-| 5 | Red — roman::TestThree | ✓ **One new test**: Exactly one new failing test: roman::TestThree.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>✓ **One behaviour per test**: The test checks a single behaviour.<br>➜ **Refactor after Green**: You started this test without cleaning up after step 4: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 4). |
+| 5 | Red — roman::TestThree | ✓ **One new test**: Exactly one new failing test: roman::TestThree.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>✓ **One behaviour per test**: The test checks a single behaviour.<br>➜ **Refactor after Green**: You started this test without cleaning up roman.go after step 4: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 4). |
 | 6 | Green | ✓ **Transformation**: Applied Unconditional → Selection (4/8).<br>✓ **Simplest change**: The test needed a simple change and the code made one: no bigger than necessary.<br>✓ **One transformation**: One transformation, as a single new test should need.<br>➜ **No test-specific code**: The code special-cases the test's inputs: generalise instead of matching test values.<br>✓ **Refactor now**: Resolved: your refactoring removed magic numbers or strings, and special-case code mixed into general code. |
 | 7 | Refactor | ✓ **Tests stayed green**: All tests kept passing during the refactoring.<br>✓ **Design effect**: The code is easier to read or change afterwards. |
 
@@ -100,7 +100,7 @@ index b7dd9f3eef2d0f001b30f3d85913c5da81f4479c..b78881bb600593847ea199a9f3f0a343
 | Step | Kind | Verdicts |
 |---|---|---|
 | 8 | Red — roman::TestFour | ✓ **One new test**: Exactly one new failing test: roman::TestFour.<br>✓ **Refactor after Green**: You cleaned up after step 6 before writing this test.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>✓ **One behaviour per test**: The test checks a single behaviour. |
-| 9 | Green | ✓ **Transformation**: Applied Unconditional → Selection (4/8).<br>✓ **Simplest change**: The code made a simple change where the test seemed to need a complex one: check that it really generalises.<br>✓ **One transformation**: One transformation, as a single new test should need.<br>➜ **Refactor now**: Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9). |
+| 9 | Green | ✓ **Transformation**: Applied Unconditional → Selection (4/8).<br>✓ **Simplest change**: The code made a simple change where the test seemed to need a complex one: check that it really generalises.<br>✓ **One transformation**: One transformation, as a single new test should need.<br>➜ **Refactor now**: Worth refactoring roman.go now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9). |
 
 <details><summary>Step 9 diff</summary>
 
@@ -126,7 +126,7 @@ index bcb3948f98e70d4b8dfaa6137c826d0153e659cb..7dff669b7e065add3a63e10f89dd339e
 
 | Step | Kind | Verdicts |
 |---|---|---|
-| 10 | Red — roman::TestFive, roman::TestTen | ⚠ **Cycle rhythm**: Several new tests in one step: write one failing test at a time.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>➜ **Refactor after Green**: You started this test without cleaning up after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9). |
+| 10 | Red — roman::TestFive, roman::TestTen | ⚠ **Cycle rhythm**: Several new tests in one step: write one failing test at a time.<br>✓ **Fails for the right reason**: It fails on its assertion (expected vs actual), so it proves the behaviour is missing.<br>➜ **Refactor after Green**: You started this test without cleaning up roman.go after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9). |
 
 <details><summary>Step 10 diff</summary>
 
@@ -181,9 +181,9 @@ index bcb3948f98e70d4b8dfaa6137c826d0153e659cb..7dff669b7e065add3a63e10f89dd339e
 
 ## Anomalies and missed refactors
 
-- Step 5 (Red): You started this test without cleaning up after step 4: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 4).
+- Step 5 (Red): You started this test without cleaning up roman.go after step 4: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 4).
 - Step 10 (Red): Several new tests in one step: write one failing test at a time.
-- Step 10 (Red): You started this test without cleaning up after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
+- Step 10 (Red): You started this test without cleaning up roman.go after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
 
 ## Uncertain verdicts
 
