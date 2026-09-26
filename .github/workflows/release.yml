@@ -1,0 +1,69 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -trimpath -ldflags "-s -w" -o dist/tddt/tddt ./cmd/tddt
+        env:
+          CGO_ENABLED: "0"
+          GOARCH: amd64
+      # llama.cpp libraries (pinned, SHA-256 checked) into lib/ next to the binary
+      - run: ./dist/tddt/tddt setup --skip-model --lib-dir dist/tddt/lib
+      - run: cp README.md dist/tddt/
+      - run: tar -C dist -czf tddt-${{ github.ref_name }}-linux-amd64.tar.gz tddt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: tddt-*-linux-amd64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -trimpath -ldflags "-s -w" -o dist/tddt/tddt.exe ./cmd/tddt
+        env:
+          CGO_ENABLED: "0"
+      # DLLs go next to the exe, where Windows finds them first.
+      - run: ./dist/tddt/tddt.exe setup --skip-model --lib-dir dist/tddt
+      - name: VC++ runtime next to the exe (redistributable)
+        shell: pwsh
+        run: |
+          foreach ($d in "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
+            Copy-Item "$env:WINDIR/System32/$d" dist/tddt/
+          }
+          Copy-Item README.md dist/tddt/
+      - shell: pwsh
+        run: Compress-Archive -Path dist/tddt -DestinationPath "tddt-${{ github.ref_name }}-windows-amd64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: tddt-*-windows-amd64.zip
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - run: sha256sum tddt-* > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            tddt-*
+            SHA256SUMS

@@ -25,9 +25,12 @@ func DefaultLibDir() string {
 		return d
 	}
 	if exe, err := os.Executable(); err == nil {
-		d := filepath.Join(filepath.Dir(exe), "lib")
-		if _, err := os.Stat(filepath.Join(d, libName())); err == nil {
-			return d
+		// release archives: lib/ next to the exe (Linux) or the exe's own
+		// folder (Windows, where DLLs next to the exe are found first)
+		for _, d := range []string{filepath.Join(filepath.Dir(exe), "lib"), filepath.Dir(exe)} {
+			if _, err := os.Stat(filepath.Join(d, libName())); err == nil {
+				return d
+			}
 		}
 	}
 	return filepath.Join(CacheDir(), "lib")
@@ -39,6 +42,12 @@ func DefaultModel() string {
 		return m
 	}
 	return filepath.Join(CacheDir(), "models", ModelFile)
+}
+
+// HasLibs reports whether dir holds the llama.cpp libraries.
+func HasLibs(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, libName()))
+	return err == nil
 }
 
 func libName() string {

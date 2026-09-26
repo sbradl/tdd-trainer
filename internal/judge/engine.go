@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"runtime"
 	"sync"
 
@@ -43,6 +44,11 @@ var loadErr error
 // GPU backend (Vulkan) is available, otherwise the CPU.
 func OpenEngine(o EngineOptions) (*Engine, error) {
 	loadOnce.Do(func() {
+		if runtime.GOOS == "windows" {
+			// Windows resolves a DLL's dependencies (ggml-base.dll, …) from
+			// the exe folder and PATH, not from the DLL's own folder.
+			os.Setenv("PATH", o.LibDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+		}
 		if err := llama.Load(o.LibDir); err != nil {
 			loadErr = fmt.Errorf("loading llama.cpp libraries from %s: %w", o.LibDir, err)
 			return

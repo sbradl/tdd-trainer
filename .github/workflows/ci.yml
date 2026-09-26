@@ -30,3 +30,49 @@ jobs:
           CGO_ENABLED: "0"
           GOOS: ${{ matrix.goos }}
           GOARCH: amd64
+
+  # Windows: unit tests plus a one-shot run on a Go kata.
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -short ./...
+      - run: go build -o dist/tddt.exe ./cmd/tddt
+        env:
+          CGO_ENABLED: "0"
+      - name: tddt --once on a kata
+        shell: pwsh
+        run: |
+          $k = New-Item -ItemType Directory -Path "$env:RUNNER_TEMP/kata"
+          Set-Content "$k/go.mod" "module kata`n`ngo 1.22"
+          Set-Content "$k/kata.go" "package kata`n`nfunc Add(a, b int) int { return 0 }"
+          Set-Content "$k/kata_test.go" "package kata`n`nimport `"testing`"`n`nfunc TestAdd(t *testing.T) {`n`tif Add(1, 2) != 3 {`n`t`tt.Fatal(`"want 3`")`n`t}`n}"
+          ./dist/tddt.exe init --yes $k
+          $out = ./dist/tddt.exe --once $k
+          $out
+          if (-not ($out -match "kata::TestAdd")) { exit 1 }
+
+  # The judge against its fixtures on CPU. The model (3 GB) is cached.
+  regress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -o dist/tddt ./cmd/tddt
+        env:
+          CGO_ENABLED: "0"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/tddt/models
+          key: tddt-model-13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983
+      - run: ./dist/tddt setup --cpu
+      - run: ./dist/tddt judge --regress --cpu | tee regress.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regress-cpu
+          path: regress.txt

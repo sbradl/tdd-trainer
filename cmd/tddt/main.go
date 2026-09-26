@@ -9,9 +9,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
@@ -23,6 +26,7 @@ import (
 	"github.com/sbradl/tdd-trainer/internal/report"
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
+	"github.com/sbradl/tdd-trainer/internal/setup"
 	"github.com/sbradl/tdd-trainer/internal/snapshot"
 	"github.com/sbradl/tdd-trainer/internal/steps"
 	"github.com/sbradl/tdd-trainer/internal/tui"
@@ -31,6 +35,7 @@ import (
 const usage = `usage:
   tddt [--once] [--no-judge] [--cpu] [dir] watch the project in dir (default .)
   tddt init [--preset NAME] [--yes] [dir]  write .tddtrainer.yml
+  tddt setup [--model-file F] [--lib-dir D] download the judge's libraries and model
   tddt show STEP [dir]                     print a step of the last session with its full diff
   tddt judge --regress [--cpu] [--gate G]  check the judge against its fixtures
 `
@@ -47,6 +52,9 @@ func main() {
 func run(args []string, in io.Reader, out io.Writer) error {
 	if len(args) > 0 && args[0] == "init" {
 		return cmdInit(args[1:], in, out)
+	}
+	if len(args) > 0 && args[0] == "setup" {
+		return cmdSetup(args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "show" {
 		return cmdShow(args[1:], out)
@@ -248,6 +256,130 @@ type controller struct {
 
 func (c controller) WriteReport() (string, error) {
 	return report.Write(c.dir, c.History(), len(c.PendingGates()), c.Store())
+}
+
+func cmdSetup(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("tddt setup", flag.ContinueOnError)
+	fs.Usage = func() { fmt.Fprint(fs.Output(), usage) }
+	modelFile := fs.String("model-file", "", "use this already downloaded model file (offline install)")
+	libDir := fs.String("lib-dir", "", "install the libraries here (default: user cache)")
+	skipModel := fs.Bool("skip-model", false, "only install the libraries")
+	cpu := fs.Bool("cpu", false, "check with the CPU backend")
+	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
+		fs.Usage()
+		return errors.Join(err, errors.New("unexpected arguments"))
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	lib := *libDir
+	switch {
+	case lib != "":
+	case judge.HasLibs(judge.DefaultLibDir()):
+		lib = judge.DefaultLibDir()
+	default:
+		lib = filepath.Join(judge.CacheDir(), "lib")
+	}
+	if judge.HasLibs(lib) {
+		fmt.Fprintf(out, "llama.cpp libraries: %s\n", lib)
+	} else {
+		fmt.Fprintf(out, "Installing llama.cpp libraries into %s\n", lib)
+		if err := setup.InstallLibs(ctx, runtime.GOOS, lib, out); err != nil {
+			return err
+		}
+	}
+	if *skipModel {
+		return nil
+	}
+
+	model := judge.DefaultModel()
+	switch {
+	case *modelFile != "":
+		if err := setup.Verify(*modelFile, setup.Model.SHA256, out); err != nil {
+			return err
+		}
+		if err := placeModel(*modelFile, model); err != nil {
+			return err
+		}
+	case fileSize(model) == setup.Model.Size:
+		if err := setup.Verify(model, setup.Model.SHA256, out); err != nil {
+			return fmt.Errorf("%w; delete it and run setup again", err)
+		}
+	default:
+		fmt.Fprintf(out, "Downloading the judge model (%.1f GB) into %s\n", float64(setup.Model.Size)/1e9, model)
+		if err := setup.Download(ctx, setup.Model, model, out); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(out, "Model: %s\n", model)
+
+	e, err := judge.OpenEngine(judge.EngineOptions{LibDir: lib, Model: model, CPU: *cpu})
+	if err != nil {
+		return err
+	}
+	defer e.Close()
+	fx, err := judge.Fixtures()
+	if err != nil {
+		return err
+	}
+	for _, f := range fx {
+		if f.Name != "red-check.no.cs-build" {
+			continue
+		}
+		t0 := time.Now()
+		vs, err := judge.Judge{Scorer: e}.Evaluate(ctx, f.Evidence, []string{f.Gate})
+		if err != nil {
+			return err
+		}
+		backend := "CPU"
+		if e.GPU {
+			backend = "GPU"
+		}
+		if vs[0].Answer != f.Expected {
+			return fmt.Errorf("judge self-check failed: got %s (p=%.2f), want %s", vs[0].Answer, vs[0].P, f.Expected)
+		}
+		fmt.Fprintf(out, "Judge ready on %s (%.1fs per gate). Run tddt in your project.\n", backend, time.Since(t0).Seconds())
+	}
+	return nil
+}
+
+// placeModel links (or copies) an offline model file into place.
+func placeModel(src, dest string) error {
+	if abs, _ := filepath.Abs(src); abs == dest {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	os.Remove(dest)
+	if err := os.Link(src, dest); err == nil {
+		return nil
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	outF, err := os.Create(dest + ".part")
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(outF, in); err != nil {
+		outF.Close()
+		return err
+	}
+	if err := outF.Close(); err != nil {
+		return err
+	}
+	return os.Rename(dest+".part", dest)
+}
+
+func fileSize(p string) int64 {
+	fi, err := os.Stat(p)
+	if err != nil {
+		return -1
+	}
+	return fi.Size()
 }
 
 func cmdShow(args []string, out io.Writer) error {
