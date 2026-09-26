@@ -56,13 +56,13 @@ var yesNo = []Option{{"yes", "Yes."}, {"no", "No."}}
 // TPPOptions lists the Transformation Priority Premise (Clean
 // Craftsmanship, 2021) in order.
 var TPPOptions = []Option{
-	{"nil", "{} -> Nil: code where there was none now exists and returns nil/null/None, a zero value, or nothing"},
-	{"constant", "Nil -> Constant: a nil/zero value or missing return becomes a literal, or an existing literal is edited into another literal; no variables, conditions or loops"},
-	{"variable", "Constant -> Variable: a literal is replaced, wholly or in part, by a variable, field, argument, or a value computed from one; no new condition or loop"},
-	{"selection", "Unconditional -> Selection: split the execution path with an if, switch, guard or pattern-matching clause"},
-	{"list", "Value -> List: a single value becomes a list or other collection"},
+	{"nil", "{} -> Nil: a new function, method or file appears whose body only returns nil/null/None, a zero value, or nothing"},
+	{"constant", "Nil -> Constant: a nil/zero value or missing return becomes a literal, an existing literal is edited into another literal, or new code returns fixed literals; no variables, conditions or loops"},
+	{"variable", "Constant -> Variable: a literal is replaced, wholly or in part, by a variable, parameter, field, or a value computed from one (for example string concatenation or interpolation with a parameter); no new condition or loop"},
+	{"selection", "Unconditional -> Selection: split the execution path with an if, switch, guard, or a new function clause that matches a pattern or guard"},
+	{"list", "Value -> List: a single value becomes a list, array or other collection, for example returning [x] instead of x"},
 	{"iteration", "Selection -> Iteration: a condition becomes a loop, or a loop over a collection is added"},
-	{"recursion", "Statement -> Recursion: the function calls itself"},
+	{"recursion", "Statement -> Recursion: the function calls itself, for example on the tail of a list"},
 	{"mutation", "Value -> Mutated Value: an existing variable or field is reassigned or changed in place"},
 }
 
@@ -83,7 +83,7 @@ var Lenses = map[string]string{
 	"review-ddd":        "Domain-Driven Design: names that drift from the domain's language, business rules living outside the type that owns the data (anemic model), domain concepts passed around as raw strings, numbers or booleans (primitive obsession), missing value objects, logic in the wrong layer, external data shapes leaking into the domain",
 	"review-smells":     "code smells (Fowler): duplicated code, long function, long parameter list, feature envy, data clumps, primitive obsession, repeated switches, shotgun surgery, divergent change, speculative generality, message chains, dead code",
 	"review-clean-code": "Clean Code (Martin): unclear, cryptic or misleading names, magic numbers, functions doing more than one thing, too many arguments, flag arguments, side effects, comments explaining bad code, inconsistent formatting",
-	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), coupling and Law of Demeter violations (reaching through objects), hard-coded values that belong in configuration, orthogonality breaks, programming by coincidence, broken windows left unfixed",
+	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), coupling and Law of Demeter violations (reaching through objects), environment-specific values hard-coded in code (hosts, URLs, paths, credentials, limits) that belong in configuration, orthogonality breaks, programming by coincidence, broken windows left unfixed",
 	"review-philosophy": "Philosophy of Software Design (Ousterhout): shallow modules, pass-through methods or variables, information leakage (one design decision baked into several places), temporal decomposition, special-case code mixed into general code, conjoined methods, unclear interfaces",
 }
 
@@ -100,19 +100,19 @@ func add(g Gate) {
 
 func init() {
 	add(Gate{Name: "red-check", Options: yesNo, Parts: []Part{PartTest, PartTranscript},
-		Question: "Does the new test fail for the right reason: the test compiled, ran to its assertion and failed there, expected vs actual? Every other failure is the wrong reason: a build or compile error of any kind (including an undefined or missing symbol), a syntax or parse error, an import error, a crash in shared setup or fixtures, or an error raised before the assertion."})
+		Question: "Does the new test fail for the right reason: the test compiled, ran to its assertion and failed there, expected vs actual? Every other failure is the wrong reason: a build or compile error of any kind (including an undefined or missing symbol), a syntax or parse error, an import error, a crash in shared setup or fixtures, an exception such as NotImplementedError or a null reference raised before the assertion."})
 	add(Gate{Name: "cheating", Options: yesNo, Parts: []Part{PartTest, PartDiff},
 		Question: "Does the implementation special-case the specific test inputs beyond an acceptable fake-it step, for example branching on exact test values or a lookup table of expected outputs? Returning one literal for one test is acceptable fake-it."})
 	add(Gate{Name: "tpp", Options: TPPOptions, Parts: []Part{PartDiff},
-		Question: "Which Transformation Priority Premise transformation does this source diff apply? If it applies several, pick the one latest in the list."})
+		Question: "Which Transformation Priority Premise transformation does this source diff apply? Look at what the added lines do compared with the removed ones. If it applies several, pick the one latest in the list."})
 	add(Gate{Name: "multi", Options: yesNo, Parts: []Part{PartDiff},
 		Question: "Does this source diff apply two or more different Transformation Priority Premise transformations (for example a new condition and a new loop, or a new variable and a new collection)? A single transformation plus the minimal code it needs is no."})
 	add(Gate{Name: "one-behaviour", Options: yesNo, Parts: []Part{PartTest},
-		Question: "Does this new test check exactly one behaviour of the code under test? Several assertions about the same single outcome are one behaviour; checking several different inputs with different expected rules, or several unrelated outcomes, is more than one."})
+		Question: "Does this new test check exactly one behaviour of the code under test? Answer yes only if all its assertions check one outcome of one call or scenario. Different inputs expecting different kinds of results, or several operations each with its own check, are more than one behaviour: answer no."})
 	add(Gate{Name: "refactor-effect", Options: refactorEffectOptions, Parts: []Part{PartDiff},
 		Question: "This diff is a refactoring: behaviour stays the same. How does it change the design and readability of the code?"})
 	add(Gate{Name: "structural", Options: yesNo, Parts: []Part{PartDiff},
-		Question: "Is this refactoring diff purely structural, preserving observable behaviour exactly (renames, extractions, moves, inlining) with no change in what the code computes?"})
+		Question: "Is this refactoring diff purely structural, preserving observable behaviour exactly (renames, extractions, moves, inlining, reformatting, rewriting a nested call as a pipeline) with no change in what the code computes? A changed literal, default value, condition or boundary changes behaviour."})
 	add(Gate{Name: "step-size", Options: stepSizeOptions, Parts: []Part{PartTest, PartTranscript, PartSource}, Floor: 0.45,
 		Question: "The test fails as the runner output shows, against the current source. What is the smallest source change that would make it pass?"})
 	for name, focus := range Lenses {

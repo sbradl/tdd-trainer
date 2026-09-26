@@ -1,0 +1,7 @@
+[xUnit.net 00:00:00.30]     Kata.Tests.RomanTests.Throws [FAIL]
+  Failed Kata.Tests.RomanTests.Throws [< 1 ms]
+  Error Message:
+   System.NotImplementedException : The method or operation is not implemented.
+  Stack Trace:
+     at Kata.Roman.From(Int32 n) in /work/Kata/Roman.cs:line 5
+     at Kata.Tests.RomanTests.Throws() in /work/Kata.Tests/RomanTests.cs:line 9

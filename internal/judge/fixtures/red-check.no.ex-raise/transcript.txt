@@ -1,0 +1,7 @@
+  1) test adds two numbers (KataTest)
+     test/kata_test.exs:5
+     ** (RuntimeError) not implemented
+     code: test "adds two numbers", do: assert Kata.add(1, 2) == 3
+     stacktrace:
+       (kata 0.1.0) lib/kata.ex:2: Kata.add/2
+       test/kata_test.exs:5: (test)
