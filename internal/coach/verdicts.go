@@ -1,0 +1,152 @@
+package coach
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/sbradl/tdd-trainer/internal/judge"
+)
+
+func gateVerdict(v judge.Verdict, level Level, text string) Verdict {
+	if v.Answer == judge.Uncertain {
+		return Verdict{Check: v.Gate, Level: Uncertain, P: v.P, Text: fmt.Sprintf("not sure (p=%.2f)", v.P)}
+	}
+	return Verdict{Check: v.Gate, Level: level, P: v.P, Text: text}
+}
+
+func finishRedCheck(vs map[string]judge.Verdict) []Verdict {
+	v := vs["red-check"]
+	if v.Answer == "yes" {
+		return []Verdict{gateVerdict(v, OK, "fails for the right reason (assertion)")}
+	}
+	return []Verdict{gateVerdict(v, Warn, "The new test fails for the wrong reason: make it compile and reach its assertion, then watch it fail there.")}
+}
+
+func finishOneBehaviour(vs map[string]judge.Verdict) []Verdict {
+	v := vs["one-behaviour"]
+	if v.Answer == "yes" {
+		return []Verdict{gateVerdict(v, OK, "checks one behaviour")}
+	}
+	return []Verdict{gateVerdict(v, Hint, "This test checks more than one behaviour; split it so each test drives one small step.")}
+}
+
+// TPP bands: which transformations count as which step size.
+var band = map[string]int{
+	"nil": 0, "constant": 0,
+	"variable": 1, "selection": 1,
+	"list": 2, "iteration": 2, "recursion": 2, "mutation": 2,
+}
+
+var bandName = []string{"constant", "simple", "complex"}
+
+// sizeBand maps a step-size answer to its band.
+var sizeBand = map[string]int{"constant": 0, "simple": 1, "complex": 2}
+
+func (c *Coach) tppLabel(id string) string {
+	pos, name := 0, id
+	for i, o := range judge.TPPOptions {
+		if o.ID == id {
+			pos = i + 1
+			name, _, _ = strings.Cut(o.Desc, ":")
+		}
+	}
+	if c.order == "recursion-first" {
+		switch id {
+		case "iteration":
+			pos = 7
+		case "recursion":
+			pos = 6
+		}
+	}
+	return fmt.Sprintf("%s (%d/8)", strings.ReplaceAll(name, "->", "→"), pos)
+}
+
+func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
+	var out []Verdict
+	tpp := vs["tpp"]
+	if tpp.Answer != judge.Uncertain {
+		out = append(out, gateVerdict(tpp, OK, c.tppLabel(tpp.Answer)))
+	} else {
+		out = append(out, gateVerdict(tpp, OK, ""))
+	}
+
+	if size, ok := vs["step-size"]; ok {
+		switch {
+		case size.Answer == judge.Uncertain || tpp.Answer == judge.Uncertain:
+			out = append(out, Verdict{Check: "step-size", Level: Uncertain, P: size.P,
+				Text: fmt.Sprintf("not sure (step-size p=%.2f, tpp p=%.2f)", size.P, tpp.P)})
+		case band[tpp.Answer] > sizeBand[size.Answer]:
+			out = append(out, gateVerdict(size, Hint, fmt.Sprintf(
+				"A simpler change would have done: the test only needed a %s change, the code made a %s one (%s).",
+				size.Answer, bandName[band[tpp.Answer]], c.tppLabel(tpp.Answer))))
+		default:
+			out = append(out, gateVerdict(size, OK, fmt.Sprintf("%s change needed, %s applied", size.Answer, bandName[band[tpp.Answer]])))
+		}
+	}
+
+	multi := vs["multi"]
+	if multi.Answer == "yes" {
+		out = append(out, gateVerdict(multi, Hint, "Several transformations in one Green: a test is probably missing in between."))
+	} else {
+		out = append(out, gateVerdict(multi, OK, "one transformation"))
+	}
+
+	if ch, ok := vs["cheating"]; ok {
+		if ch.Answer == "yes" {
+			out = append(out, gateVerdict(ch, Hint, "The code special-cases the test's inputs: generalise instead of matching test values."))
+		} else {
+			out = append(out, gateVerdict(ch, OK, "no special-casing beyond fake-it"))
+		}
+	}
+	return out
+}
+
+func finishRefactor(vs map[string]judge.Verdict) []Verdict {
+	var out []Verdict
+	st := vs["structural"]
+	if st.Answer == "no" {
+		out = append(out, gateVerdict(st, Warn, "This refactoring seems to change what the code computes; refactorings keep behaviour exactly."))
+	} else {
+		out = append(out, gateVerdict(st, OK, "behaviour preserved"))
+	}
+	eff := vs["refactor-effect"]
+	switch eff.Answer {
+	case "worsens":
+		out = append(out, gateVerdict(eff, Hint, "This refactoring makes the code harder to read or change."))
+	default:
+		out = append(out, gateVerdict(eff, OK, eff.Answer))
+	}
+	return out
+}
+
+var lensTitle = map[string]string{
+	"review-ddd":        "domain design",
+	"review-smells":     "code smells",
+	"review-clean-code": "clean code",
+	"review-pragmatic":  "pragmatic design",
+	"review-philosophy": "module design",
+}
+
+// finishLenses combines the review lenses into one missed-refactor verdict.
+func finishLenses(vs map[string]judge.Verdict) []Verdict {
+	var found, unsure []string
+	maxP := 0.0
+	for _, name := range judge.LensNames() {
+		v := vs[name]
+		switch v.Answer {
+		case "yes":
+			found = append(found, lensTitle[name])
+			maxP = max(maxP, v.P)
+		case judge.Uncertain:
+			unsure = append(unsure, lensTitle[name])
+		}
+	}
+	switch {
+	case len(found) > 0:
+		return []Verdict{{Check: "missed refactor", Level: Hint, P: maxP, Text: fmt.Sprintf(
+			"The last Green left something to refactor (review: %s). Consider refactoring before the next Red.", strings.Join(found, ", "))}}
+	case len(unsure) > 0:
+		return []Verdict{{Check: "missed refactor", Level: Uncertain, Text: "not sure (" + strings.Join(unsure, ", ") + ")"}}
+	}
+	return []Verdict{{Check: "missed refactor", Level: OK, Text: "nothing worth refactoring after the last Green"}}
+}
