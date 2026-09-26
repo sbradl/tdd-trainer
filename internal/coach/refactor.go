@@ -88,9 +88,12 @@ func (c *Coach) reviewed(issue *refactorIssue, lenses []string, problem string, 
 	return []Verdict{v}
 }
 
-// Recheck asks, for each problem the review found, whether the change
-// from the flagged code to the code now removes it; after a green save
-// while refactoring. Only the newest recheck runs.
+// Recheck judges whether the refactoring since the flagged code removed
+// the problems the review found; after a green save while refactoring.
+// First it asks per problem whether the change removed it. If not all
+// surely are, the lenses that raised the hint look again at the Green's
+// net change (before the Green to now). Every recheck ends in a verdict
+// the learner sees. Only the newest recheck runs.
 func (c *Coach) Recheck(now snapshot.ID) error {
 	c.mu.Lock()
 	issue := c.issue
@@ -101,26 +104,20 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 		c.mu.Unlock()
 		return nil
 	}
-	flagged, problems := issue.green.To, issue.problems
+	g, problems, lenses := issue.green, issue.problems, issue.lenses
 	if issue.recheck != nil {
 		issue.recheck.cancelled = true
 	}
 	c.mu.Unlock()
 
-	diffs, err := c.store.Diff(flagged, now)
+	diff, err := c.sourceDiff(g.To, now)
+	if err != nil || diff == "" {
+		return err // or back to the flagged code: nothing new to judge
+	}
+	net, err := c.sourceDiff(g.From, now)
 	if err != nil {
 		return err
 	}
-	var diff strings.Builder
-	for _, d := range diffs {
-		if d.Kind == config.Source {
-			diff.WriteString(d.Patch)
-		}
-	}
-	if diff.Len() == 0 {
-		return nil // back to the flagged code: nothing new to judge
-	}
-	g := issue.green
 	var gates []judge.Gate
 	var names []string
 	for i, p := range problems {
@@ -129,44 +126,81 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 		gates = append(gates, fg)
 		names = append(names, fg.Name)
 	}
-	j := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: diff.String()}, gates: names, adhoc: gates,
+	// verdict turns a result into what the learner sees; nil: unchanged
+	verdict := func(v Verdict, resolved bool) []Verdict {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if issue.closed || v.Text == issue.last {
+			return nil // the next Red started meanwhile, or nothing new
+		}
+		issue.resolved, issue.last = resolved, v.Text
+		return []Verdict{v}
+	}
+	resolved := Verdict{Check: opportunity, Level: OK, Text: "Resolved: your refactoring removed " + lowerFirst(issue.problem)}
+	lensJob := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: net}, gates: lenses,
 		finish: func(vs map[string]judge.Verdict) []Verdict {
-			fixed, open := 0, 0
-			for _, n := range names {
+			clean, found := 0, false
+			for _, n := range lenses {
 				switch vs[n].Answer {
-				case "yes":
-					fixed++
 				case "no":
-					open++
+					clean++
+				case "yes":
+					found = true
 				}
 			}
-			var v Verdict
-			c.mu.Lock()
-			defer c.mu.Unlock()
-			if issue.closed {
-				return nil // the next Red started meanwhile
-			}
 			switch {
-			case fixed == len(names):
-				issue.resolved = true
-				v = Verdict{Check: opportunity, Level: OK, Text: "Resolved: your refactoring removed " + lowerFirst(issue.problem)}
-			case open > 0:
-				issue.resolved = false
-				v = Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf("Still there in %s after your last change: %s (tddt show %d)", issue.where, issue.problem, g.N)}
-			default:
-				return nil // not sure either way: keep the last verdict
+			case clean == len(lenses):
+				return verdict(resolved, true)
+			case found:
+				return verdict(Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf(
+					"Still there in %s after your last change: %s (tddt show %d)", issue.where, issue.problem, g.N)}, false)
 			}
-			if v.Text == issue.last {
-				return nil
+			return verdict(Verdict{Check: opportunity, Level: OK, Text: "Probably resolved: after your refactoring the review no longer clearly finds " +
+				lowerFirst(issue.problem)}, true)
+		}}
+	var j *job
+	j = &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: diff}, gates: names, adhoc: gates,
+		finish: func(vs map[string]judge.Verdict) []Verdict {
+			fixed := 0
+			for _, n := range names {
+				if vs[n].Answer == "yes" {
+					fixed++
+				}
 			}
-			issue.last = v.Text
-			return []Verdict{v}
+			if fixed == len(names) {
+				return verdict(resolved, true)
+			}
+			c.mu.Lock()
+			current := issue.recheck == j && !issue.closed // no newer recheck started
+			if current {
+				issue.recheck = lensJob
+			}
+			c.mu.Unlock()
+			if current {
+				c.enqueue(lensJob)
+			}
+			return nil
 		}}
 	c.mu.Lock()
 	issue.recheck = j
 	c.mu.Unlock()
 	c.enqueue(j)
 	return nil
+}
+
+// sourceDiff joins the production code patches between two snapshots.
+func (c *Coach) sourceDiff(from, to snapshot.ID) (string, error) {
+	diffs, err := c.store.Diff(from, to)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	for _, d := range diffs {
+		if d.Kind == config.Source {
+			b.WriteString(d.Patch)
+		}
+	}
+	return b.String(), nil
 }
 
 // redStarted closes the last Green's issue: unresolved means missed.

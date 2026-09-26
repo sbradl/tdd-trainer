@@ -431,6 +431,46 @@ func TestRefactoringSomethingElseKeepsTheHint(t *testing.T) {
 	}
 }
 
+const loopRoman = "package kata\n\nfunc Roman(n int) string {\n\tout := \"\"\n\tfor i := 0; i < n; i++ {\n\t\tout += \"I\"\n\t}\n\treturn out\n}\n"
+
+func TestLensesConfirmARefactoringTheFixQuestionMissed(t *testing.T) {
+	k := smellyKata(t) // refactor-fixed says no without strings.Repeat
+	k.write("kata.go", loopRoman)
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved: your refactoring removed repeated conditionals") {
+		t.Fatalf("got %+v", v)
+	}
+	sc := k.coach.scorer.(*scripted)
+	if ev := sc.evidence["review-smells"]; !strings.Contains(ev, "+\tfor i := 0") || !strings.Contains(ev, "-func Roman(n int) string { return \"I\" }") {
+		t.Errorf("lenses must see the Green's net change, from before the Green:\n%s", ev)
+	}
+}
+
+func TestUnsureLensesMeanProbablyResolved(t *testing.T) {
+	k := smellyKata(t)
+	sc := k.coach.scorer.(*scripted)
+	sc.answer = func(gate, state string) string {
+		if strings.HasPrefix(gate, "review-smells") {
+			return "?" // no option: uncertain
+		}
+		return ""
+	}
+	k.write("kata.go", loopRoman)
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Probably resolved:") {
+		t.Fatalf("got %+v", v)
+	}
+	// resolved counts for the next Red
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
+	k.run("TestOne TestTwo TestThree", "TestThree")
+	k.drain()
+	if v := k.last(4, "missed refactor"); v == nil || v.Level != OK {
+		t.Fatalf("got %+v", v)
+	}
+}
+
 func TestSkippingTheRefactorIsMissed(t *testing.T) {
 	k := smellyKata(t)
 	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
