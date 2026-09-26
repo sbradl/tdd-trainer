@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/sbradl/tdd-trainer/internal/results"
 )
 
 const FileName = ".tddtrainer.yml"
@@ -58,6 +62,9 @@ func Load(dir string) (Config, error) {
 	}
 	if c.Test.Cmd == "" {
 		return Config{}, errors.New(FileName + ": test.cmd is required")
+	}
+	if c.Results.Format != "" && !slices.Contains(results.Formats, c.Results.Format) {
+		return Config{}, fmt.Errorf("%s: unknown results.format %q (want one of %s)", FileName, c.Results.Format, strings.Join(results.Formats, ", "))
 	}
 	return c, nil
 }

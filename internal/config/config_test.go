@@ -58,6 +58,14 @@ func TestLoadRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsUnknownFormat(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, FileName), []byte("test: {cmd: x}\nresults: {format: tap}\n"), 0o644)
+	if _, err := Load(dir); err == nil {
+		t.Fatal("want error for unknown format")
+	}
+}
+
 func TestLoadMissingFile(t *testing.T) {
 	if _, err := Load(t.TempDir()); !os.IsNotExist(err) {
 		t.Fatalf("want not-exist error, got %v", err)

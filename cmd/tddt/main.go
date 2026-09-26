@@ -38,10 +38,13 @@ func run(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	st, err := runner.Run(ctx, cfg, dir)
+	o, err := runner.Run(ctx, cfg, dir)
 	if err != nil {
 		return err
 	}
-	fmt.Println(st)
+	if o.ExitCodeOnly {
+		fmt.Fprintln(os.Stderr, "tddt: warning: no test results read, using the exit code only; verdicts will be weaker")
+	}
+	fmt.Println(o.State)
 	return nil
 }

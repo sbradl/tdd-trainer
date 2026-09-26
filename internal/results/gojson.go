@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
-	"sort"
 	"strings"
 )
 
@@ -12,15 +11,18 @@ type goEvent struct {
 	Action      string
 	Package     string
 	Test        string
+	Output      string
 	FailedBuild string
 }
 
-// ReadGoJSON reads `go test -json` output. A test ID is "<package>.<test>".
-// Parent tests whose failure only reflects a failing subtest are dropped.
-func ReadGoJSON(r io.Reader) (TestState, error) {
-	failed := map[string]bool{}
-	pkgFailedTests := map[string]bool{}
-	var st TestState
+// ReadGoJSON reads `go test -json` output; package = classname. Parent
+// tests whose failure only reflects a failing subtest are dropped.
+func ReadGoJSON(r io.Reader) (Report, error) {
+	var order []goKey
+	status := map[goKey]Status{}
+	output := map[goKey]*strings.Builder{}
+	pkgHasFailedTest := map[string]bool{}
+	var rep Report
 
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 1024*1024), 16*1024*1024)
@@ -33,38 +35,53 @@ func ReadGoJSON(r io.Reader) (TestState, error) {
 		if err := json.Unmarshal(line, &ev); err != nil {
 			continue
 		}
+		k := goKey{ev.Package, ev.Test}
 		switch {
 		case ev.Action == "build-fail":
-			st.BuildBroken = true
-		case ev.Action == "fail" && ev.Test != "":
-			failed[ev.Package+"."+ev.Test] = true
-			pkgFailedTests[ev.Package] = true
-		case ev.Action == "fail" && ev.FailedBuild != "":
-			st.BuildBroken = true
-		case ev.Action == "fail" && !pkgFailedTests[ev.Package]:
-			// package failed without any failing test: panic in init, TestMain, ...
-			st.BuildBroken = true
+			rep.BuildBroken = true
+		case ev.Test != "" && ev.Action == "run":
+			order = append(order, k)
+			output[k] = &strings.Builder{}
+		case ev.Test != "" && ev.Action == "output":
+			if b := output[k]; b != nil {
+				b.WriteString(ev.Output)
+			}
+		case ev.Test != "" && ev.Action == "pass":
+			status[k] = Passed
+		case ev.Test != "" && ev.Action == "skip":
+			status[k] = Skipped
+		case ev.Test != "" && ev.Action == "fail":
+			status[k] = Failed
+			pkgHasFailedTest[ev.Package] = true
+		case ev.Action == "fail" && (ev.FailedBuild != "" || !pkgHasFailedTest[ev.Package]):
+			// build failure, or a package failing without a failing test:
+			// panic in init, TestMain, ...
+			rep.BuildBroken = true
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return TestState{}, err
-	}
-	if st.BuildBroken {
-		return st, nil
+		return Report{}, err
 	}
 
-	for id := range failed {
-		if !hasFailedSubtest(id, failed) {
-			st.Failing = append(st.Failing, id)
+	for _, k := range order {
+		st := status[k]
+		if st == Failed && hasFailedSubtest(k, status) {
+			continue
 		}
+		res := Result{Class: k.pkg, Name: k.test, Status: st}
+		if st == Failed {
+			res.Message = strings.TrimSpace(output[k].String())
+		}
+		rep.Tests = append(rep.Tests, res)
 	}
-	sort.Strings(st.Failing)
-	return st, nil
+	return rep, nil
 }
 
-func hasFailedSubtest(id string, failed map[string]bool) bool {
-	for other := range failed {
-		if strings.HasPrefix(other, id+"/") {
+type goKey struct{ pkg, test string }
+
+func hasFailedSubtest(parent goKey, status map[goKey]Status) bool {
+	for k, st := range status {
+		if st == Failed && k.pkg == parent.pkg && strings.HasPrefix(k.test, parent.test+"/") {
 			return true
 		}
 	}

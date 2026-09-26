@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="4" time="0.031" timestamp="2026-09-26T16:25:05.803124+02:00" hostname="stefan-laptop13"><testcase classname="tests.test_kata" name="test_passes" time="0.001" /><testcase classname="tests.test_kata" name="test_add" time="0.001"><failure message="assert 0 == 3&#10; +  where 0 = add(1, 2)">def test_add():
+&gt;       assert add(1, 2) == 3
+E       assert 0 == 3
+E        +  where 0 = add(1, 2)
+
+tests/test_kata.py:7: AssertionError</failure></testcase><testcase classname="tests.test_kata" name="test_error" time="0.000"><failure message="NameError: name 'sub' is not defined">def test_error():
+&gt;       assert sub(1, 2) == -1
+               ^^^
+E       NameError: name 'sub' is not defined
+
+tests/test_kata.py:10: NameError</failure></testcase><testcase classname="tests.test_kata.TestGroup" name="test_in_class" time="0.000" /></testsuite></testsuites>

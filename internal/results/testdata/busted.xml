@@ -1,0 +1,22 @@
+<testsuites tests="4" errors="1" failures="1" skip="0" time="0.01">
+	<testsuite name="Run 1 of 1" tests="4" errors="1" failures="1" skip="0" timestamp="2026-09-26T14:30:00" time="0.01">
+		<testcase classname="spec.kata_spec_lua:4" name="kata passes" time="0.00"/>
+		<testcase classname="spec.kata_spec_lua:8" name="kata add adds two numbers" time="0.00">
+			<failure>spec/kata_spec.lua:9: Expected objects to be the same.
+Passed in:
+(number) 0
+Expected:
+(number) 3
+stack traceback:
+	spec/kata_spec.lua:9: in function &lt;spec/kata_spec.lua:8&gt;
+</failure>
+		</testcase>
+		<testcase classname="spec.kata_spec_lua:12" name="kata add errors" time="0.00">
+			<error>spec/kata_spec.lua:13: attempt to call a nil value (global 'sub')
+stack traceback:
+	spec/kata_spec.lua:13: in function &lt;spec/kata_spec.lua:12&gt;
+</error>
+		</testcase>
+		<testcase classname="kata_spec_lua:3" name="top level" time="0.00"/>
+	</testsuite>
+</testsuites>

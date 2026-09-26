@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="a0c88500-89ec-42cf-a2c7-4de03b0c6def" name="@stefan-laptop13 2026-09-26 16:26:39" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-09-26T16:26:39.5597202+02:00" queuing="2026-09-26T16:26:39.5597203+02:00" start="2026-09-26T16:26:38.5313313+02:00" finish="2026-09-26T16:26:39.5688407+02:00" />
+  <TestSettings name="default" id="b550c6a7-2854-42bd-99a7-aa9c02d5dd31">
+    <Deployment runDeploymentRoot="_stefan-laptop13_2026-09-26_16_26_39" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="2b711f64-e42e-41da-9dbb-2f369fd50d22" testId="a00b9996-f49b-daa7-d8fa-f522729aee03" testName="Kata.Tests.CalcTests.Adds" computerName="stefan-laptop13" duration="00:00:00.0094982" startTime="2026-09-26T16:26:39.3200235+02:00" endTime="2026-09-26T16:26:39.3456709+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2b711f64-e42e-41da-9dbb-2f369fd50d22">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ
+Expected: 3
+Actual:   0</Message>
+          <StackTrace>   at Kata.Tests.CalcTests.Adds() in /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs:line 8
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="13012cec-911c-476d-a9da-d25f9f5469ea" testId="74fa9b60-2208-241d-af59-255a51998c87" testName="Kata.Tests.CalcTests.Theory(x: 2)" computerName="stefan-laptop13" duration="00:00:00.0005147" startTime="2026-09-26T16:26:39.3720855+02:00" endTime="2026-09-26T16:26:39.3721718+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="13012cec-911c-476d-a9da-d25f9f5469ea">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Equal() Failure: Values differ
+Expected: 1
+Actual:   2</Message>
+          <StackTrace>   at Kata.Tests.CalcTests.Theory(Int32 x) in /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs:line 10
+   at InvokeStub_CalcTests.Theory(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="d487df83-0fd7-428a-bc8c-844da9603dff" testId="a2849643-2b82-af0a-716b-6f048cd7bfb8" testName="Kata.Tests.CalcTests.Passes" computerName="stefan-laptop13" duration="00:00:00.0001813" startTime="2026-09-26T16:26:39.3729558+02:00" endTime="2026-09-26T16:26:39.3730344+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d487df83-0fd7-428a-bc8c-844da9603dff" />
+    <UnitTestResult executionId="d0d7f066-6bea-408e-bac9-f901531ae794" testId="3f467f03-c972-82d9-0b1d-5764932ff965" testName="Kata.Tests.CalcTests.Theory(x: 1)" computerName="stefan-laptop13" duration="00:00:00.0014646" startTime="2026-09-26T16:26:39.3699214+02:00" endTime="2026-09-26T16:26:39.3703040+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d0d7f066-6bea-408e-bac9-f901531ae794" />
+    <UnitTestResult executionId="d9d6ad18-bc80-4c46-a738-f6d7a1509acf" testId="e6521283-0af5-b336-9c46-dfb2d6cf0fed" testName="Kata.Tests.CalcTests.Throws" computerName="stefan-laptop13" duration="00:00:00.0002146" startTime="2026-09-26T16:26:39.3731753+02:00" endTime="2026-09-26T16:26:39.3732366+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d9d6ad18-bc80-4c46-a738-f6d7a1509acf">
+      <Output>
+        <ErrorInfo>
+          <Message>System.NotImplementedException : The method or operation is not implemented.</Message>
+          <StackTrace>   at Kata.Tests.CalcTests.Throws() in /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs:line 9
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Kata.Tests.CalcTests.Passes" storage="/tmp/claude-1000/-home-sbradl-projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/kata.tests/bin/debug/net10.0/kata.tests.dll" id="a2849643-2b82-af0a-716b-6f048cd7bfb8">
+      <Execution id="d487df83-0fd7-428a-bc8c-844da9603dff" />
+      <TestMethod codeBase="/tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/bin/Debug/net10.0/Kata.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Kata.Tests.CalcTests" name="Passes" />
+    </UnitTest>
+    <UnitTest name="Kata.Tests.CalcTests.Theory(x: 2)" storage="/tmp/claude-1000/-home-sbradl-projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/kata.tests/bin/debug/net10.0/kata.tests.dll" id="74fa9b60-2208-241d-af59-255a51998c87">
+      <Execution id="13012cec-911c-476d-a9da-d25f9f5469ea" />
+      <TestMethod codeBase="/tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/bin/Debug/net10.0/Kata.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Kata.Tests.CalcTests" name="Theory" />
+    </UnitTest>
+    <UnitTest name="Kata.Tests.CalcTests.Theory(x: 1)" storage="/tmp/claude-1000/-home-sbradl-projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/kata.tests/bin/debug/net10.0/kata.tests.dll" id="3f467f03-c972-82d9-0b1d-5764932ff965">
+      <Execution id="d0d7f066-6bea-408e-bac9-f901531ae794" />
+      <TestMethod codeBase="/tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/bin/Debug/net10.0/Kata.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Kata.Tests.CalcTests" name="Theory" />
+    </UnitTest>
+    <UnitTest name="Kata.Tests.CalcTests.Throws" storage="/tmp/claude-1000/-home-sbradl-projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/kata.tests/bin/debug/net10.0/kata.tests.dll" id="e6521283-0af5-b336-9c46-dfb2d6cf0fed">
+      <Execution id="d9d6ad18-bc80-4c46-a738-f6d7a1509acf" />
+      <TestMethod codeBase="/tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/bin/Debug/net10.0/Kata.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Kata.Tests.CalcTests" name="Throws" />
+    </UnitTest>
+    <UnitTest name="Kata.Tests.CalcTests.Adds" storage="/tmp/claude-1000/-home-sbradl-projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/kata.tests/bin/debug/net10.0/kata.tests.dll" id="a00b9996-f49b-daa7-d8fa-f522729aee03">
+      <Execution id="2b711f64-e42e-41da-9dbb-2f369fd50d22" />
+      <TestMethod codeBase="/tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/bin/Debug/net10.0/Kata.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Kata.Tests.CalcTests" name="Adds" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="a00b9996-f49b-daa7-d8fa-f522729aee03" executionId="2b711f64-e42e-41da-9dbb-2f369fd50d22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="74fa9b60-2208-241d-af59-255a51998c87" executionId="13012cec-911c-476d-a9da-d25f9f5469ea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a2849643-2b82-af0a-716b-6f048cd7bfb8" executionId="d487df83-0fd7-428a-bc8c-844da9603dff" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3f467f03-c972-82d9-0b1d-5764932ff965" executionId="d0d7f066-6bea-408e-bac9-f901531ae794" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e6521283-0af5-b336-9c46-dfb2d6cf0fed" executionId="d9d6ad18-bc80-4c46-a738-f6d7a1509acf" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="5" executed="5" passed="2" failed="3" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.11)
+[xUnit.net 00:00:00.10]   Discovering: Kata.Tests
+[xUnit.net 00:00:00.17]   Discovered:  Kata.Tests
+[xUnit.net 00:00:00.21]   Starting:    Kata.Tests
+[xUnit.net 00:00:00.28]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.28]       Expected: 3
+[xUnit.net 00:00:00.28]       Actual:   0
+[xUnit.net 00:00:00.28]       Stack Trace:
+[xUnit.net 00:00:00.28]         /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs(8,0): at Kata.Tests.CalcTests.Adds()
+[xUnit.net 00:00:00.28]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.28]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.30]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.30]       Expected: 1
+[xUnit.net 00:00:00.30]       Actual:   2
+[xUnit.net 00:00:00.30]       Stack Trace:
+[xUnit.net 00:00:00.30]         /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs(10,0): at Kata.Tests.CalcTests.Theory(Int32 x)
+[xUnit.net 00:00:00.30]            at InvokeStub_CalcTests.Theory(Object, Span`1)
+[xUnit.net 00:00:00.30]            at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:00:00.30]       System.NotImplementedException : The method or operation is not implemented.
+[xUnit.net 00:00:00.30]       Stack Trace:
+[xUnit.net 00:00:00.30]         /tmp/claude-1000/-home-sbradl-Projects/ae262f36-8fbb-4000-ae4d-f17f4492be03/scratchpad/fx/dotnet/Kata.Tests/UnitTest1.cs(9,0): at Kata.Tests.CalcTests.Throws()
+[xUnit.net 00:00:00.30]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.30]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.30]   Finished:    Kata.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="stefan-laptop13" outcome="Error" timestamp="2026-09-26T16:26:39.3521187+02:00">
+        <Text>[xUnit.net 00:00:00.27]     Kata.Tests.CalcTests.Adds [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="stefan-laptop13" outcome="Error" timestamp="2026-09-26T16:26:39.3727680+02:00">
+        <Text>[xUnit.net 00:00:00.30]     Kata.Tests.CalcTests.Theory(x: 2) [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="stefan-laptop13" outcome="Error" timestamp="2026-09-26T16:26:39.3734076+02:00">
+        <Text>[xUnit.net 00:00:00.30]     Kata.Tests.CalcTests.Throws [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>
