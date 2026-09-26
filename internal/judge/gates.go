@@ -83,7 +83,7 @@ var refactorEffectOptions = []Option{
 var Lenses = map[string]string{
 	"review-smells":     "code smells (Fowler): duplicated code, long function, long parameter list, feature envy, data clumps, primitive obsession, repeated switches, shotgun surgery, divergent change, speculative generality, message chains, dead code",
 	"review-clean-code": "Clean Code (Martin): unclear, cryptic or misleading names, magic numbers, functions doing more than one thing, too many arguments, flag arguments, side effects, comments explaining bad code, inconsistent formatting",
-	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), coupling and Law of Demeter violations (reaching through objects), environment-specific values hard-coded in code (hosts, URLs, paths, credentials, limits) that belong in configuration, orthogonality breaks, programming by coincidence, broken windows left unfixed",
+	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), reaching through objects (Law of Demeter), hosts, URLs, paths, credentials or limits hard-coded instead of configured, orthogonality breaks, programming by coincidence",
 	"review-philosophy": "Philosophy of Software Design (Ousterhout): shallow modules, pass-through methods or variables, information leakage (one design decision baked into several places), temporal decomposition, special-case code mixed into general code, conjoined methods, unclear interfaces",
 }
 
@@ -92,16 +92,16 @@ var Lenses = map[string]string{
 // missed-refactor hint can say what to refactor.
 var LensProblems = map[string][]Option{
 	"review-smells": {
-		{"duplicated", "Duplicated code: the same logic or the same literal appears more than once."},
-		{"long-function", "Long function: one function does a lot and could be split."},
-		{"long-params", "Long parameter list: a function takes many parameters."},
-		{"feature-envy", "Feature envy: a function works mostly on another object's data."},
-		{"data-clumps", "Data clumps: the same group of values travels together without its own type."},
-		{"primitive-obsession", "Primitive obsession: a concept is passed around as a raw string, number or boolean."},
-		{"repeated-switch", "Repeated conditionals: the same if/switch on the same value appears in several places, or a chain of special cases grows."},
-		{"speculative", "Speculative generality: code or parameters nobody needs yet."},
-		{"message-chains", "Message chains: a.b().c().d() reaching through objects."},
-		{"dead-code", "Dead code: code that is never used."},
+		{"duplicated", "Duplicated code: the same logic or literal repeated."},
+		{"long-function", "Long function."},
+		{"long-params", "Long parameter list."},
+		{"feature-envy", "Feature envy: uses another object's data more than its own."},
+		{"data-clumps", "Data clumps: values that always travel together."},
+		{"primitive-obsession", "Primitive obsession: a concept passed around as a raw string, number or boolean."},
+		{"repeated-switch", "Repeated conditionals: the same if/switch in several places, or a growing chain of special cases."},
+		{"speculative", "Speculative generality: code nobody needs yet."},
+		{"message-chains", "Message chains."},
+		{"dead-code", "Dead code."},
 	},
 	"review-clean-code": {
 		{"names", "Unclear names: cryptic, abbreviated or misleading names."},
@@ -198,11 +198,25 @@ func init() {
 	}
 }
 
+// terseTPPOptions are TPPOptions in short, so that next-tpp fits in fewer
+// 128-token blocks; tpp keeps the long, tuned texts.
+var terseTPPOptions = []Option{
+	{"nil", "{} -> Nil: new code that only returns nil, a zero value or nothing"},
+	{"constant", "Nil -> Constant: literals appear or change; no variables, conditions or loops"},
+	{"variable", "Constant -> Variable: a literal is replaced by a variable, parameter or a value computed from one"},
+	{"selection", "Unconditional -> Selection: a new if, switch, guard or pattern clause"},
+	{"list", "Value -> List: a single value becomes a collection"},
+	{"iteration", "Selection -> Iteration: a new loop"},
+	{"recursion", "Statement -> Recursion: the function calls itself"},
+	{"mutation", "Value -> Mutated Value: an existing variable is reassigned or changed in place"},
+}
+
 // NextTPPGate asks which transformation the simplest code for a new test
 // of one case would apply. Evaluate it with Judge.EvaluateGates.
 func NextTPPGate(c Case) Gate {
-	return Gate{Name: "next-tpp", Options: TPPOptions, Parts: []Part{PartTest, PartSource}, Floor: 0.5,
-		Question: fmt.Sprintf("A new test for this case is added next. Case: %s. Which Transformation Priority Premise transformation would the simplest change to the current source apply to make it pass?", c.Desc)}
+	name, _, _ := strings.Cut(c.Desc, ":") // "boundaries", not the whole description
+	return Gate{Name: "next-tpp", Options: terseTPPOptions, Parts: []Part{PartTest, PartSource}, Floor: 0.5,
+		Question: fmt.Sprintf("A new test for the %s case is added next. Which Transformation Priority Premise transformation would the simplest change to the current source apply to make it pass?", name)}
 }
 
 // LensNames returns the review lens gate names, sorted.
