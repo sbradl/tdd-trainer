@@ -14,6 +14,7 @@ import (
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
+	"github.com/sbradl/tdd-trainer/internal/snapshot"
 	"github.com/sbradl/tdd-trainer/internal/watch"
 )
 
@@ -87,8 +88,17 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 	batches, _ := w.Run(ctx)
 	warnedExitCode := false
 	fmt.Fprintln(out, "Watching; Ctrl-C to quit.")
-	session.Loop(ctx, batches, func(ctx context.Context) (runner.Outcome, error) {
-		return runner.Run(ctx, cfg, dir)
+	store, err := snapshot.Open(dir, cfg)
+	if err != nil {
+		return err
+	}
+	session.Loop(ctx, batches, func(ctx context.Context) (session.Result, error) {
+		id, err := store.Snapshot("test run")
+		if err != nil {
+			return session.Result{}, fmt.Errorf("snapshot: %w", err)
+		}
+		o, err := runner.Run(ctx, cfg, dir)
+		return session.Result{Outcome: o, Snapshot: id}, err
 	}, cfg.SlowRunWarning, func(e session.Event) {
 		switch e := e.(type) {
 		case session.RunStarted:

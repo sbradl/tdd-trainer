@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sbradl/tdd-trainer/internal/runner"
+	"github.com/sbradl/tdd-trainer/internal/snapshot"
 )
 
 // Event is one of RunStarted, SlowRun, RunDone or RunFailed.
@@ -22,7 +23,7 @@ type SlowRun struct{ Limit time.Duration }
 
 // RunDone: a run finished and was not superseded.
 type RunDone struct {
-	Outcome  runner.Outcome
+	Result
 	Duration time.Duration
 }
 
@@ -34,15 +35,22 @@ func (SlowRun) isEvent()    {}
 func (RunDone) isEvent()    {}
 func (RunFailed) isEvent()  {}
 
-// RunFunc runs build and tests once; it must stop when ctx is cancelled.
-type RunFunc func(ctx context.Context) (runner.Outcome, error)
+// Result is one test run and the snapshot of the code it tested.
+type Result struct {
+	Outcome  runner.Outcome
+	Snapshot snapshot.ID
+}
+
+// RunFunc snapshots the code and runs build and tests once; it must stop
+// when ctx is cancelled.
+type RunFunc func(ctx context.Context) (Result, error)
 
 // Loop runs the tests once, then again after every batch of changes. A
 // batch arriving mid-run cancels that run and starts a new one; runs
 // never overlap. Loop returns when ctx ends or changes is closed.
 func Loop(ctx context.Context, changes <-chan []string, run RunFunc, slowAfter time.Duration, emit func(Event)) {
 	type result struct {
-		o   runner.Outcome
+		r   Result
 		err error
 		d   time.Duration
 	}
@@ -64,8 +72,8 @@ func Loop(ctx context.Context, changes <-chan []string, run RunFunc, slowAfter t
 		emit(RunStarted{Changed: changed})
 		go func() {
 			t0 := time.Now()
-			o, err := run(runCtx)
-			ch <- result{o, err, time.Since(t0)}
+			r, err := run(runCtx)
+			ch <- result{r, err, time.Since(t0)}
 		}()
 	}
 	defer func() {
@@ -103,7 +111,7 @@ func Loop(ctx context.Context, changes <-chan []string, run RunFunc, slowAfter t
 			case r.err != nil && !errors.Is(r.err, context.Canceled):
 				emit(RunFailed{Err: r.err})
 			case r.err == nil:
-				emit(RunDone{Outcome: r.o, Duration: r.d})
+				emit(RunDone{Result: r.r, Duration: r.d})
 			}
 			if queued {
 				c := next

@@ -37,15 +37,15 @@ type fakeRun struct {
 	mu      sync.Mutex
 	active  int
 	overlap bool
-	release chan runner.Outcome
+	release chan Result
 	started chan struct{}
 }
 
 func newFakeRun() *fakeRun {
-	return &fakeRun{release: make(chan runner.Outcome), started: make(chan struct{}, 100)}
+	return &fakeRun{release: make(chan Result), started: make(chan struct{}, 100)}
 }
 
-func (f *fakeRun) run(ctx context.Context) (runner.Outcome, error) {
+func (f *fakeRun) run(ctx context.Context) (Result, error) {
 	f.mu.Lock()
 	f.active++
 	if f.active > 1 {
@@ -58,12 +58,12 @@ func (f *fakeRun) run(ctx context.Context) (runner.Outcome, error) {
 	case o := <-f.release:
 		return o, nil
 	case <-ctx.Done():
-		return runner.Outcome{}, ctx.Err()
+		return Result{}, ctx.Err()
 	}
 }
 
-func red(id string) runner.Outcome {
-	return runner.Outcome{State: results.TestState{Failing: []results.Failure{{ID: id}}}}
+func red(id string) Result {
+	return Result{Outcome: runner.Outcome{State: results.TestState{Failing: []results.Failure{{ID: id}}}}}
 }
 
 func TestLoopRunsOnStartAndOnChanges(t *testing.T) {
@@ -128,7 +128,7 @@ func TestRunErrorsAreReported(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	boom := errors.New("sh: not found")
-	go Loop(ctx, make(chan []string), func(context.Context) (runner.Outcome, error) { return runner.Outcome{}, boom }, 0, rec.emit)
+	go Loop(ctx, make(chan []string), func(context.Context) (Result, error) { return Result{}, boom }, 0, rec.emit)
 	rec.next(t)
 	if e, ok := rec.next(t).(RunFailed); !ok || e.Err != boom {
 		t.Fatalf("got %+v", e)
