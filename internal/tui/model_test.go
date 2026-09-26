@@ -99,7 +99,7 @@ func TestClosedCycleCollapses(t *testing.T) {
 func TestRedInProgressCard(t *testing.T) {
 	m := New(&fakeCtl{}, "")
 	feed(m, run([]string{}), steps.Baseline{}, run(nil), steps.RedInProgress{BuildBroken: true})
-	if v := m.View(); !strings.Contains(v, "┌ Red in progress") || !strings.Contains(v, "compile error") {
+	if v := m.View(); !strings.Contains(v, "┌ Red in progress") || !strings.Contains(v, "smallest stub") {
 		t.Errorf("missing card:\n%s", v)
 	}
 }
@@ -175,5 +175,14 @@ func TestResolvedHintReplacesItsCard(t *testing.T) {
 	v := m.View()
 	if strings.Contains(v, "Worth refactoring now") || !strings.Contains(v, "Resolved: repeated conditionals") {
 		t.Fatalf("card not replaced or no toast:\n%s", v)
+	}
+}
+
+func TestLongToastWraps(t *testing.T) {
+	m := New(&fakeCtl{}, "")
+	m.Update(tea.WindowSizeMsg{Width: 40, Height: 12})
+	m.showToast("Resolved: your refactoring removed magic numbers or strings, and special-case code mixed into general code.")
+	if v := m.View(); !strings.Contains(v, "general") || !strings.Contains(v, "  code. ") {
+		t.Fatalf("toast cut off:\n%s", v)
 	}
 }

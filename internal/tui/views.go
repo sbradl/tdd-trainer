@@ -97,7 +97,9 @@ func (m *Model) footer() []string {
 		out = append(out, red.Render(" error: "+firstLine(m.lastErr)))
 	}
 	if m.toast != "" && m.now().Before(m.toastUntil) {
-		out = append(out, " "+inverse.Render(" "+m.toast+" "))
+		for _, l := range wrap(m.toast, max(20, m.width-4)) {
+			out = append(out, " "+inverse.Render(" "+l+" "))
+		}
 	}
 	keys := "Tab dashboard · r/g/f set phase · b baseline · w report · q quit"
 	if m.view == dashboard {
@@ -129,7 +131,7 @@ func (m *Model) cards() []card {
 		}
 	}
 	if r := m.redInProgress; r != nil {
-		text := "The new test does not fail on an assertion yet. A compile error is not a Red: add the smallest stub so the test runs and fails on its assertion."
+		text := "The compile error counts as failing: it tells you to create the code under test. Add the smallest stub so the test compiles and fails on its assertion; that completes the Red."
 		if !r.BuildBroken {
 			text = "The new test errors before its assertion. Make it reach the assertion and fail there."
 		}

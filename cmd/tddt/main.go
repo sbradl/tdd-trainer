@@ -232,7 +232,7 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 			fmt.Fprintln(out, "» baseline set")
 		}
 	case steps.RedInProgress:
-		fmt.Fprintln(out, "» Red in progress: the new test does not fail on an assertion yet")
+		fmt.Fprintln(out, "» Red in progress: add the smallest stub so the new test compiles and fails on its assertion")
 	case steps.PhaseChanged:
 		fmt.Fprintln(out, "» phase set by hand:", ev.Phase)
 	case steps.StepDone:
