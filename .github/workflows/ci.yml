@@ -3,6 +3,9 @@ name: ci
 on:
   push:
   pull_request:
+  # windows-smoke and regress are slow or use Windows minutes: run them by
+  # hand (Actions → ci → Run workflow), e.g. before a release.
+  workflow_dispatch:
 
 jobs:
   test:
@@ -33,6 +36,7 @@ jobs:
 
   # Windows: unit tests plus a one-shot run on a Go kata.
   windows-smoke:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +61,7 @@ jobs:
 
   # The judge against its fixtures on CPU. The model (3 GB) is cached.
   regress:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
