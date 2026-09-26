@@ -1,0 +1,7 @@
+ def gross_price(net, qty):
+-    return net * qty + net * qty * 0.2
++    subtotal = net * qty
++    return subtotal + _vat(subtotal)
++
++def _vat(amount):
++    return amount * 0.2

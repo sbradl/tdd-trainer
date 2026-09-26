@@ -1,0 +1,3 @@
+ def sum([]), do: 0
+-def sum([x]), do: x
++def sum([head | tail]), do: head + sum(tail)

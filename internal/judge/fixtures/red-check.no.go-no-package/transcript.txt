@@ -1,0 +1,4 @@
+pomodorotui/internal/app: no non-test Go files in /home/sbradl/Projects/pomodorotui-judge/internal/app
+FAIL	pomodorotui/internal/app [build failed]
+FAIL
+exit: 1

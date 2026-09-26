@@ -1,0 +1,38 @@
+package app_test
+
+import (
+	"strings"
+	"testing"
+
+	"pomodorotui/internal/app"
+)
+
+func TestStartupMenuShowsClassicPresetWithItsDurations(t *testing.T) {
+	timer := app.New()
+
+	screen := timer.View()
+
+	assertShowsPreset(t, screen, "Classic", "25m", "5m", "15m")
+}
+
+func TestStartupMenuShowsLongPresetWithItsDurations(t *testing.T) {
+	timer := app.New()
+
+	screen := timer.View()
+
+	assertShowsPreset(t, screen, "Long", "50m", "10m", "30m")
+}
+
+func assertShowsPreset(t *testing.T, screen, name, work, shortBreak, longBreak string) {
+	t.Helper()
+	for _, line := range strings.Split(screen, "\n") {
+		if strings.Contains(line, name) &&
+			strings.Contains(line, work) &&
+			strings.Contains(line, shortBreak) &&
+			strings.Contains(line, longBreak) {
+			return
+		}
+	}
+	t.Errorf("expected a menu line showing preset %q with %s work, %s short break, %s long break; screen was:\n%q",
+		name, work, shortBreak, longBreak, screen)
+}

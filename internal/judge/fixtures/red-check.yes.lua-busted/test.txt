@@ -1,0 +1,3 @@
+it("adds two numbers", function()
+  assert.are.equal(5, calc.add(2, 3))
+end)

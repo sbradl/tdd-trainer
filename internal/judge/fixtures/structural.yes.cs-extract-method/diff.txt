@@ -1,0 +1,8 @@
+ public decimal Total(Order o)
+ {
+-    return o.Lines.Sum(l => l.Price * l.Qty) * 1.19m;
++    return WithVat(Subtotal(o));
+ }
++
++private static decimal Subtotal(Order o) => o.Lines.Sum(l => l.Price * l.Qty);
++private static decimal WithVat(decimal net) => net * 1.19m;

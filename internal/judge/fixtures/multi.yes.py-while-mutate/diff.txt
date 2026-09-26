@@ -1,0 +1,7 @@
+def factors(n):
+     result = []
+-    if n % 2 == 0:
++    while n % 2 == 0:
+         result.append(2)
++        n //= 2
+     return result

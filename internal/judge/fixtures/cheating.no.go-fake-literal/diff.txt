@@ -1,0 +1,17 @@
+diff --git a/internal/app/app.go b/internal/app/app.go
+new file mode 100644
+index 0000000..60a6427
+--- /dev/null
++++ b/internal/app/app.go
+@@ -0,0 +1,11 @@
++package app
++
++type Menu struct{}
++
++func New() Menu {
++	return Menu{}
++}
++
++func (Menu) View() string {
++	return "Classic 25m 5m 15m"
++}

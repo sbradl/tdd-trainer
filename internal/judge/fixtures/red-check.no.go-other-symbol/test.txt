@@ -1,0 +1,7 @@
+func TestStartupMenuShowsClassicPreset(t *testing.T) {
+	menu := app.New()
+
+	screen := menu.View()
+
+	assertScreenShow(t, screen, "Classic")
+}

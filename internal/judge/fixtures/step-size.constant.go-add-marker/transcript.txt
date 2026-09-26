@@ -1,0 +1,8 @@
+=== RUN   TestStartupMenuHasClassicPresetSelected
+    menu_test.go:31: expected preset "Classic" to be marked selected with "> "; screen was:
+        "Classic 25m 5m 15m\nLong 50m 10m 30m"
+--- FAIL: TestStartupMenuHasClassicPresetSelected (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.002s
+FAIL
+exit status: 1

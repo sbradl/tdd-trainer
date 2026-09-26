@@ -1,0 +1,7 @@
++public class Parser
++{
++    public int? Parse(string input)
++    {
++        return null;
++    }
++}

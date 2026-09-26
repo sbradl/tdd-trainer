@@ -1,0 +1,6 @@
+ func Greeting() string {
+-	msg := "Hello, World"
+-	return msg
++	var msg = "Hello, World"
++	return msg
+ }

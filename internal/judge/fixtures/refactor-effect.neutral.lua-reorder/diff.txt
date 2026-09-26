@@ -1,0 +1,7 @@
+ function M.area(w, h)
+-  local width = w
+-  local height = h
++  local height = h
++  local width = w
+   return width * height
+ end

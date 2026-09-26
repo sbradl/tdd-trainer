@@ -1,0 +1,6 @@
+def test_most_common_word_wins():
+    words = ["tea", "coffee", "tea", "water", "tea", "coffee"]
+
+    top = most_common(words)
+
+    assert top == "tea"

@@ -1,0 +1,10 @@
+●
+0 successes / 1 failure / 0 errors / 0 pending : 0.002 seconds
+
+Failure → spec/calc_spec.lua @ 4
+adds two numbers
+spec/calc_spec.lua:5: Expected objects to be equal.
+Passed in:
+(number) 0
+Expected:
+(number) 5

@@ -1,0 +1,5 @@
+test "money" do
+  assert Money.parse("12.50 EUR") == %Money{cents: 1250, currency: :eur}
+  assert Money.format(%Money{cents: 99, currency: :usd}) == "$0.99"
+  assert {:error, :invalid} = Money.parse("abc")
+end

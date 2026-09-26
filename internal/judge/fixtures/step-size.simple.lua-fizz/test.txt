@@ -1,0 +1,1 @@
+it("says Fizz for 3", function() assert.are.equal("Fizz", fizzbuzz(3)) end)

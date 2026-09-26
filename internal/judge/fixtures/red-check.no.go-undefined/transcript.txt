@@ -1,0 +1,5 @@
+# pomodorotui/internal/app_test [pomodorotui/internal/app.test]
+internal/app/app_test.go:39:26: menu.Update undefined (type app.Menu has no field or method Update)
+FAIL	pomodorotui/internal/app [build failed]
+FAIL
+exit: 1

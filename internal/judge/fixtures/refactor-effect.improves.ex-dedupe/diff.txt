@@ -1,0 +1,6 @@
+-def net_price(item), do: item.price * item.qty - item.price * item.qty * item.discount
+-def gross_price(item), do: (item.price * item.qty - item.price * item.qty * item.discount) * 1.19
++def net_price(item), do: subtotal(item) * (1 - item.discount)
++def gross_price(item), do: net_price(item) * 1.19
++
++defp subtotal(item), do: item.price * item.qty

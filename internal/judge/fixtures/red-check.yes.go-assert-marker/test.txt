@@ -1,0 +1,27 @@
+func TestStartupMenuHasClassicPresetSelected(t *testing.T) {
+	menu := app.New()
+
+	screen := menu.View()
+
+	assertSelectedPreset(t, screen, "Classic", "Long")
+}
+
+const selectionMarker = "> "
+
+func assertSelectedPreset(t *testing.T, screen, selected, unselected string) {
+	t.Helper()
+	if !strings.HasPrefix(lineShowing(screen, selected), selectionMarker) ||
+		strings.HasPrefix(lineShowing(screen, unselected), selectionMarker) {
+		t.Errorf("want %q marked selected with %q and %q not\nscreen:\n%s",
+			selected, selectionMarker, unselected, screen)
+	}
+}
+
+func lineShowing(screen, text string) string {
+	for _, line := range strings.Split(screen, "\n") {
+		if strings.Contains(line, text) {
+			return line
+		}
+	}
+	return ""
+}

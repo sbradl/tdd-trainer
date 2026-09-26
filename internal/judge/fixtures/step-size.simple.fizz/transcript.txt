@@ -1,0 +1,2 @@
+FAILED tests/test_fizz.py::test_three_says_fizz - AssertionError: assert '3' == 'Fizz'
+1 failed in 0.01s

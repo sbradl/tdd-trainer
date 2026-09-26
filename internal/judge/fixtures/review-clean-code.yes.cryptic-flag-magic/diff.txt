@@ -1,0 +1,12 @@
++++ b/stats/proc.go
++func proc(d []int, f bool) int {
++	var x int
++	for _, v := range d {
++		if f {
++			x += v * 7
++		} else {
++			x -= v % 13
++		}
++	}
++	return x
++}

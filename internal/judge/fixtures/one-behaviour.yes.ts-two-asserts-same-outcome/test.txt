@@ -1,0 +1,5 @@
+it("splits a single word into one token", () => {
+  const tokens = tokenize("hello");
+  expect(tokens).toHaveLength(1);
+  expect(tokens[0]).toBe("hello");
+});

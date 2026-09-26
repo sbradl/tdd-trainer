@@ -1,0 +1,10 @@
+=== RUN   TestPressingDownInStartupMenuMovesSelectionFromClassicToLong
+    menu_test.go:41: expected preset "Long" to be marked selected with "> "; screen was:
+        "> Classic 25m 5m 15m\nLong 50m 10m 30m"
+    menu_test.go:41: expected preset "Classic" not to be marked selected; screen was:
+        "> Classic 25m 5m 15m\nLong 50m 10m 30m"
+--- FAIL: TestPressingDownInStartupMenuMovesSelectionFromClassicToLong (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.003s
+FAIL
+exit 1

@@ -1,0 +1,11 @@
+diff --git a/internal/app/app.go b/internal/app/app.go
+index 0520cbc..82a7aef 100644
+--- a/internal/app/app.go
++++ b/internal/app/app.go
+@@ -7,5 +7,5 @@ func New() Menu {
+ }
+ 
+ func (Menu) View() string {
+-	return "Classic 25m 5m 15m\nLong 50m 10m 30m"
++	return "> Classic 25m 5m 15m\nLong 50m 10m 30m"
+ }

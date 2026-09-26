@@ -1,0 +1,2 @@
++def fizzbuzz(n) when rem(n, 3) == 0, do: "Fizz"
+ def fizzbuzz(n), do: Integer.to_string(n)

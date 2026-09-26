@@ -1,0 +1,12 @@
+ FAIL  src/calc.test.ts > adds two numbers
+AssertionError: expected 0 to be 5 // Object.is equality
+
+- Expected
++ Received
+
+- 5
++ 0
+
+ ❯ src/calc.test.ts:5:21
+ Test Files  1 failed (1)
+      Tests  1 failed (1)

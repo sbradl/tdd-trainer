@@ -1,0 +1,7 @@
+-export function page(items: string[], size = 10) {
+-  return items.slice(0, size);
++export function page(items: string[], size = 20) {
++  return firstN(items, size);
+ }
++
++const firstN = (xs: string[], n: number) => xs.slice(0, n);

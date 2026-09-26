@@ -1,0 +1,4 @@
+ export function primeFactors(n: number): number[] {
+-  return 2;
++  return [2];
+ }

@@ -1,0 +1,8 @@
+=== RUN   TestStartupMenuShowsClassicPresetWithItsDurations
+    menu_test.go:15: expected a menu line showing preset "Classic" with 25m work, 5m short break, 15m long break; screen was:
+        ""
+--- FAIL: TestStartupMenuShowsClassicPresetWithItsDurations (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.002s
+FAIL
+exit status 1

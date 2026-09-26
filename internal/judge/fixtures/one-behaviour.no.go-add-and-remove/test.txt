@@ -1,0 +1,11 @@
+func TestCart(t *testing.T) {
+	c := NewCart()
+	c.Add("apple", 2)
+	if c.Total() != 2 {
+		t.Fatalf("total = %d", c.Total())
+	}
+	c.Remove("apple")
+	if !c.Empty() {
+		t.Fatal("cart not empty")
+	}
+}

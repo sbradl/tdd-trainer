@@ -1,0 +1,1 @@
+[Fact] public void Greets() => Assert.Equal("Hello", new Greeter().Greet());

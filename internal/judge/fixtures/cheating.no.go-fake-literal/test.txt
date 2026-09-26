@@ -1,0 +1,25 @@
+package app_test
+
+import (
+	"strings"
+	"testing"
+
+	"pomodorotui/internal/app"
+)
+
+func TestStartupMenuShowsClassicPresetWithItsDurations(t *testing.T) {
+	menu := app.New()
+
+	screen := menu.View()
+
+	assertScreenShows(t, screen, "Classic", "25m", "5m", "15m")
+}
+
+func assertScreenShows(t *testing.T, screen string, wanted ...string) {
+	t.Helper()
+	for _, text := range wanted {
+		if !strings.Contains(screen, text) {
+			t.Errorf("screen does not show %q\nscreen:\n%s", text, screen)
+		}
+	}
+}

@@ -1,0 +1,3 @@
+ function Counter:increment()
++  self.count = self.count + 1
+ end

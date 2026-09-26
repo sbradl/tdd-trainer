@@ -1,0 +1,1 @@
+assert price(3) == 30; assert price(7) == 70; assert price(12) == 120

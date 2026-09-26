@@ -1,0 +1,11 @@
+  1) test adds two numbers (CalcTest)
+     test/calc_test.exs:4
+     Assertion with == failed
+     code:  assert Calc.add(2, 3) == 5
+     left:  0
+     right: 5
+     stacktrace:
+       test/calc_test.exs:5: (test)
+
+Finished in 0.02 seconds
+1 test, 1 failure

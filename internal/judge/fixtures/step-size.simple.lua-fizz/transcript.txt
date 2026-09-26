@@ -1,0 +1,5 @@
+spec/fizz_spec.lua:2: Expected objects to be equal.
+Passed in:
+(string) '3'
+Expected:
+(string) 'Fizz'

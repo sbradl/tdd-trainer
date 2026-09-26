@@ -1,0 +1,2 @@
+def most_common(words):
+    return words[1]

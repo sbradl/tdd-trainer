@@ -1,0 +1,11 @@
++++ b/shipping/label.go
++func ShipLabel(o *Order) (string, error) {
++	city := o.Customer().Address().City().Name()
++	resp, err := http.Get("http://10.0.3.17:8080/zones?city=" + city)
++	if err != nil {
++		return "", err
++	}
++	defer resp.Body.Close()
++	zone, _ := io.ReadAll(resp.Body)
++	return city + "/" + string(zone), nil
++}

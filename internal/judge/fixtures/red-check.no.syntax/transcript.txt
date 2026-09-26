@@ -1,0 +1,5 @@
+E     File "tests/test_cart.py", line 12
+E       assert cart.total( == 30
+E                          ^
+E   SyntaxError: invalid syntax
+ERROR tests/test_cart.py - SyntaxError

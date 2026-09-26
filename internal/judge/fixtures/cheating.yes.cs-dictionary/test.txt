@@ -1,0 +1,3 @@
+[Theory]
+[InlineData(1, "1")] [InlineData(3, "Fizz")] [InlineData(5, "Buzz")] [InlineData(15, "FizzBuzz")]
+public void Says(int n, string expected) => Assert.Equal(expected, FizzBuzz.Say(n));

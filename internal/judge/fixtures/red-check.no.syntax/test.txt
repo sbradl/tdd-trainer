@@ -1,0 +1,2 @@
+test_total_of_two_items
+    assert cart.total( == 30

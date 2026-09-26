@@ -1,0 +1,5 @@
+=== RUN   TestFactorsOfTwelve
+    primes_test.go:12: Factors(12) = [12], want [2 2 3]
+--- FAIL: TestFactorsOfTwelve (0.00s)
+FAIL
+exit status 1

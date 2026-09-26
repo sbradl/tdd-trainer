@@ -1,0 +1,8 @@
+ public List<int> PrimeFactors(int n)
+ {
+-    return new List<int>();
++    var factors = new List<int>();
++    for (var d = 2; n > 1; d++)
++        while (n % d == 0) { factors.Add(d); n /= d; }
++    return factors;
+ }

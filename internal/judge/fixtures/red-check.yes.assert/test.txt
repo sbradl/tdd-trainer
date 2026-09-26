@@ -1,0 +1,2 @@
+test_fizzbuzz_returns_fizz_for_3
+    assert fizzbuzz(3) == "Fizz"

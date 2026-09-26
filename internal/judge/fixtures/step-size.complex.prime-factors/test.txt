@@ -1,0 +1,7 @@
+func TestFactorsOfTwelve(t *testing.T) {
+	got := primes.Factors(12)
+
+	if !reflect.DeepEqual(got, []int{2, 2, 3}) {
+		t.Errorf("Factors(12) = %v, want [2 2 3]", got)
+	}
+}

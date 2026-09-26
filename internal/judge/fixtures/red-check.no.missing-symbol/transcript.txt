@@ -1,0 +1,3 @@
+E   ImportError: cannot import name 'stamp_count' from 'loyalty'
+FAILED tests/test_loyalty.py::test_new_customer_starts_with_zero_stamps
+1 failed in 0.02s

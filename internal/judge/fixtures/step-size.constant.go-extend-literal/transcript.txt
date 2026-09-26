@@ -1,0 +1,9 @@
+$ go test ./internal/app/... -run TestStartupMenuShowsLongPresetWithItsDurations -v
+=== RUN   TestStartupMenuShowsLongPresetWithItsDurations
+    menu_test.go:23: expected a menu line showing preset "Long" with 50m work, 10m short break, 30m long break; screen was:
+        "Classic 25m 5m 15m"
+--- FAIL: TestStartupMenuShowsLongPresetWithItsDurations (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.002s
+FAIL
+exit status 1

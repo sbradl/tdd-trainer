@@ -1,0 +1,9 @@
+  1) test adds two numbers (CalcTest)
+     test/calc_test.exs:4
+     ** (UndefinedFunctionError) function Calc.add/2 is undefined or private
+     code: assert Calc.add(2, 3) == 5
+     stacktrace:
+       Calc.add(2, 3)
+       test/calc_test.exs:5: (test)
+
+1 test, 1 failure

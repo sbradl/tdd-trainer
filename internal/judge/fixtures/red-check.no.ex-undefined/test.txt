@@ -1,0 +1,3 @@
+test "adds two numbers" do
+  assert Calc.add(2, 3) == 5
+end

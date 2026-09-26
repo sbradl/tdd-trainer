@@ -1,0 +1,75 @@
+package app_test
+
+import (
+	"strings"
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"pomodorotui/internal/app"
+)
+
+func TestStartupMenuShowsClassicPresetWithItsDurations(t *testing.T) {
+	timer := app.New()
+
+	screen := timer.View()
+
+	assertShowsPreset(t, screen, "Classic", "25m", "5m", "15m")
+}
+
+func TestStartupMenuShowsLongPresetWithItsDurations(t *testing.T) {
+	timer := app.New()
+
+	screen := timer.View()
+
+	assertShowsPreset(t, screen, "Long", "50m", "10m", "30m")
+}
+
+func TestStartupMenuHasClassicPresetSelected(t *testing.T) {
+	timer := app.New()
+
+	screen := timer.View()
+
+	assertOnlySelectedPreset(t, screen, "Classic", "Long")
+}
+
+func TestPressingDownInStartupMenuMovesSelectionFromClassicToLong(t *testing.T) {
+	var timer tea.Model = app.New()
+
+	timer = press(timer, tea.KeyDown)
+
+	assertOnlySelectedPreset(t, timer.View(), "Long", "Classic")
+}
+
+func press(model tea.Model, key tea.KeyType) tea.Model {
+	next, _ := model.Update(tea.KeyMsg{Type: key})
+	return next
+}
+
+func assertShowsPreset(t *testing.T, screen, name, work, shortBreak, longBreak string) {
+	t.Helper()
+	for _, line := range strings.Split(screen, "\n") {
+		if strings.Contains(line, name) &&
+			strings.Contains(line, work) &&
+			strings.Contains(line, shortBreak) &&
+			strings.Contains(line, longBreak) {
+			return
+		}
+	}
+	t.Errorf("expected a menu line showing preset %q with %s work, %s short break, %s long break; screen was:\n%q",
+		name, work, shortBreak, longBreak, screen)
+}
+
+const selectionMarker = "> "
+
+func assertOnlySelectedPreset(t *testing.T, screen, selected string, others ...string) {
+	t.Helper()
+	if !strings.Contains(screen, selectionMarker+selected) {
+		t.Errorf("expected preset %q to be marked selected with %q; screen was:\n%q", selected, selectionMarker, screen)
+	}
+	for _, other := range others {
+		if strings.Contains(screen, selectionMarker+other) {
+			t.Errorf("expected preset %q not to be marked selected; screen was:\n%q", other, screen)
+		}
+	}
+}

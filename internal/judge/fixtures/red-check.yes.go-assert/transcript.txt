@@ -1,0 +1,18 @@
+=== RUN   TestStartupMenuShowsLongPresetWithItsDurations
+    app_test.go:23: screen does not show "Long"
+        screen:
+        Classic 25m 5m 15m
+    app_test.go:23: screen does not show "50m"
+        screen:
+        Classic 25m 5m 15m
+    app_test.go:23: screen does not show "10m"
+        screen:
+        Classic 25m 5m 15m
+    app_test.go:23: screen does not show "30m"
+        screen:
+        Classic 25m 5m 15m
+--- FAIL: TestStartupMenuShowsLongPresetWithItsDurations (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.002s
+FAIL
+exit=1

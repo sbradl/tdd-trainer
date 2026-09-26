@@ -1,0 +1,4 @@
+Assertion with == failed
+code:  assert Calc.sum([1, 2, 3]) == 6
+left:  1
+right: 6

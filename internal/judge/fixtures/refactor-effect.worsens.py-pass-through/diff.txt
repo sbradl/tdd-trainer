@@ -1,0 +1,14 @@
++class PriceCalculatorFactory:
++    def create(self):
++        return PriceCalculatorWrapper()
++
++class PriceCalculatorWrapper:
++    def total(self, items):
++        return _total(items)
++
+-def total(items):
++def _total(items):
+     return sum(i.price for i in items)
++
++def total(items):
++    return PriceCalculatorFactory().create().total(items)

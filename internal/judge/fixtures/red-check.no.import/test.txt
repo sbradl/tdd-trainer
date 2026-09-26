@@ -1,0 +1,3 @@
+test_fizzbuzz_returns_fizz_for_3
+    from fizz import fizzbuz
+    assert fizzbuz(3) == "Fizz"

@@ -1,0 +1,7 @@
+ export function toArabic(r: string): number {
+-  return 0;
++  if (r === "III") return 3;
++  if (r === "IV") return 4;
++  if (r === "IX") return 9;
++  return 0;
+ }

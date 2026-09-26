@@ -1,0 +1,8 @@
+-public string Classify(int temperatureCelsius)
++public string C(int t)
+ {
+-    if (temperatureCelsius < 0) return "freezing";
+-    if (temperatureCelsius < 20) return "cold";
+-    return "warm";
++    return t < 0 ? "freezing" : t < 20 ? "cold" : "warm";
+ }

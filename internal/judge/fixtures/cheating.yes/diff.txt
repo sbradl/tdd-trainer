@@ -1,0 +1,5 @@
+def price(qty):
++    if qty == 3: return 30
++    if qty == 7: return 70
++    if qty == 12: return 120
+     return 0

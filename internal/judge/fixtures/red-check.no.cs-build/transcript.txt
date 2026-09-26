@@ -1,0 +1,2 @@
+/src/CalcTests/CalcTests.cs(9,68): error CS0246: The type or namespace name 'Calculator' could not be found (are you missing a using directive or an assembly reference?) [/src/CalcTests/CalcTests.csproj]
+Build FAILED.

@@ -1,0 +1,7 @@
+--- a/bank/transfer.go
++++ b/bank/transfer.go
+@@ -21,5 +21,5 @@ func (a *Account) Withdraw(amount Money) error {
+ 	if amount.GreaterThan(a.balance) {
+-		return fmt.Errorf("transfer exceeds balance")
++		return fmt.Errorf("transfer of %s exceeds balance of %s", amount, a.balance)
+ 	}

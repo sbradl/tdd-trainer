@@ -1,0 +1,7 @@
+func TestStartupMenuDownArrowMovesSelectionFromClassicToLong(t *testing.T) {
+	menu := app.New()
+
+	menuAfterKey, _ := menu.Update(tea.KeyMsg{Type: tea.KeyDown})
+
+	assertSelectedPreset(t, menuAfterKey.View(), "Long", "Classic")
+}

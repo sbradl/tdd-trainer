@@ -1,0 +1,3 @@
+def price(qty):
+-    return 0
++    return qty * 10

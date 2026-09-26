@@ -1,0 +1,6 @@
+◼
+0 successes / 0 failures / 1 error / 0 pending : 0.001 seconds
+
+Error → spec/calc_spec.lua @ 4
+adds two numbers
+spec/calc_spec.lua:5: attempt to call a nil value (field 'add')

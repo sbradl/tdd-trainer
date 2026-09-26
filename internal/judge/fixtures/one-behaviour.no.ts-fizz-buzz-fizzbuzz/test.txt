@@ -1,0 +1,6 @@
+it("handles fizzbuzz", () => {
+  expect(fizzbuzz(3)).toBe("Fizz");
+  expect(fizzbuzz(5)).toBe("Buzz");
+  expect(fizzbuzz(15)).toBe("FizzBuzz");
+  expect(fizzbuzz(7)).toBe("7");
+});

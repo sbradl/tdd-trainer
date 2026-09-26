@@ -1,0 +1,6 @@
+-def names(users), do: Enum.map(Enum.filter(users, & &1.active), & &1.name)
++def names(users) do
++  users
++  |> Enum.filter(& &1.active)
++  |> Enum.map(& &1.name)
++end

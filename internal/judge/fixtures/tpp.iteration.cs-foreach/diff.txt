@@ -1,0 +1,6 @@
+ public IEnumerable<string> Shout(IEnumerable<string> words)
+ {
+-    return new[] { words.First().ToUpper() };
++    foreach (var word in words)
++        yield return word.ToUpper();
+ }

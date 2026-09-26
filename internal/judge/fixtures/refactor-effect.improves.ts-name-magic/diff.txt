@@ -1,0 +1,7 @@
+-export function f(a: number[]) {
+-  return a.filter(x => x > 17).length;
++const ADULT_AGE = 17;
++
++export function countAdults(ages: number[]) {
++  return ages.filter(age => age > ADULT_AGE).length;
+ }

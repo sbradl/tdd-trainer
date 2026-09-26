@@ -1,0 +1,4 @@
+defmodule Calc do
+  def sum([]), do: 0
+  def sum([x | _]), do: x
+end

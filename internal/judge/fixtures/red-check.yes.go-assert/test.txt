@@ -1,0 +1,16 @@
+func TestStartupMenuShowsLongPresetWithItsDurations(t *testing.T) {
+	menu := app.New()
+
+	screen := menu.View()
+
+	assertScreenShows(t, screen, "Long", "50m", "10m", "30m")
+}
+
+func assertScreenShows(t *testing.T, screen string, wanted ...string) {
+	t.Helper()
+	for _, text := range wanted {
+		if !strings.Contains(screen, text) {
+			t.Errorf("screen does not show %q\nscreen:\n%s", text, screen)
+		}
+	}
+}

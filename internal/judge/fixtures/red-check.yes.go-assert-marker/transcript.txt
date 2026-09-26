@@ -1,0 +1,11 @@
+$ go test ./internal/app/... -run TestStartupMenuHasClassicPresetSelected -v
+=== RUN   TestStartupMenuHasClassicPresetSelected
+    app_test.go:31: want "Classic" marked selected with "> " and "Long" not
+        screen:
+        Classic 25m 5m 15m
+        Long 50m 10m 30m
+--- FAIL: TestStartupMenuHasClassicPresetSelected (0.00s)
+FAIL
+FAIL	pomodorotui/internal/app	0.002s
+FAIL
+exit: 1

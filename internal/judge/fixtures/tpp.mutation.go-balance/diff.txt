@@ -1,0 +1,3 @@
+ func (a *Account) Deposit(amount int) {
++	a.balance += amount
+ }

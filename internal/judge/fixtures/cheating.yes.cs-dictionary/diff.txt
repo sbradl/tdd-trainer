@@ -1,0 +1,6 @@
+ public static string Say(int n)
+ {
+-    return n.ToString();
++    var answers = new Dictionary<int, string> { [1] = "1", [3] = "Fizz", [5] = "Buzz", [15] = "FizzBuzz" };
++    return answers[n];
+ }

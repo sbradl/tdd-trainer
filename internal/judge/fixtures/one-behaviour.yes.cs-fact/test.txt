@@ -1,0 +1,6 @@
+[Fact]
+public void Add_TwoAndThree_ReturnsFive()
+{
+    var calc = new Calculator();
+    Assert.Equal(5, calc.Add(2, 3));
+}

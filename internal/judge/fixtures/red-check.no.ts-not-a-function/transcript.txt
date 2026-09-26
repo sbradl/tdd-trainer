@@ -1,0 +1,5 @@
+ FAIL  src/calc.test.ts > adds two numbers
+TypeError: add is not a function
+ ❯ src/calc.test.ts:5:12
+ Test Files  1 failed (1)
+      Tests  1 failed (1)

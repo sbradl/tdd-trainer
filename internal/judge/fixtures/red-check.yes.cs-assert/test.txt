@@ -1,0 +1,2 @@
+[Fact]
+public void Add_TwoAndThree_ReturnsFive() => Assert.Equal(5, new Calculator().Add(2, 3));

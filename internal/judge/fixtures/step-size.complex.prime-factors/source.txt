@@ -1,0 +1,8 @@
+package primes
+
+func Factors(n int) []int {
+	if n > 1 {
+		return []int{n}
+	}
+	return nil
+}
