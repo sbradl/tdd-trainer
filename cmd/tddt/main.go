@@ -12,14 +12,17 @@ import (
 	"strings"
 	"sync"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"golang.org/x/term"
+
+	"github.com/sbradl/tdd-trainer/internal/app"
 	"github.com/sbradl/tdd-trainer/internal/coach"
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/judge"
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
-	"github.com/sbradl/tdd-trainer/internal/snapshot"
 	"github.com/sbradl/tdd-trainer/internal/steps"
-	"github.com/sbradl/tdd-trainer/internal/watch"
+	"github.com/sbradl/tdd-trainer/internal/tui"
 )
 
 const usage = `usage:
@@ -104,63 +107,51 @@ func judgeScorer(out io.Writer, disabled, cpu bool) *judge.Lazy {
 
 const exitCodeOnlyWarning = "warning: no test results read, using the exit code only; verdicts will be weaker"
 
-// watchLoop prints plain event lines; the TUI replaces it later.
+// watchLoop runs the session with the TUI, or with plain lines when
+// stdout is not a terminal.
 func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer, jd *judge.Lazy) error {
-	w, err := watch.New(dir, cfg, watch.DefaultDebounce)
-	if err != nil {
+	if jd != nil {
+		defer jd.Close()
+	}
+	status := "exact checks only"
+	if jd != nil {
+		status = "judge loading…"
+	}
+	if f, ok := out.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		var p *tea.Program
+		a, err := app.New(dir, cfg, jd, func(m any) {
+			if p != nil {
+				p.Send(m)
+			}
+		})
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		p = tea.NewProgram(tui.New(controller{a}, status), tea.WithAltScreen(), tea.WithContext(ctx))
+		go func() {
+			a.Run(ctx)
+			p.Quit()
+		}()
+		_, err = p.Run()
+		if errors.Is(err, tea.ErrProgramKilled) || errors.Is(err, context.Canceled) {
+			err = nil
+		}
 		return err
 	}
-	batches, _ := w.Run(ctx)
-	store, err := snapshot.Open(dir, cfg)
-	if err != nil {
-		return err
-	}
-	var mu sync.Mutex // serialises output from the loop and the judge worker
+
+	var mu sync.Mutex
 	printf := func(format string, a ...any) {
 		mu.Lock()
 		defer mu.Unlock()
 		fmt.Fprintf(out, format, a...)
 	}
-	var scorer judge.Scorer
-	if jd != nil {
-		scorer = jd
-		defer jd.Close()
-		go func() {
-			if e, err := jd.Wait(ctx); err != nil && ctx.Err() == nil {
-				printf("judge unavailable: %v\n", err)
-			} else if e != nil {
-				printf("judge ready (%s)\n", map[bool]string{true: "GPU", false: "CPU"}[e.GPU])
-			}
-		}()
-	}
-	okCount := 0
-	c := coach.New(store, scorer, cfg.TPPOrder, func(v coach.Verdict) {
-		switch v.Level {
-		case coach.OK:
-			mu.Lock()
-			okCount++
-			mu.Unlock()
-		case coach.Uncertain:
-		default:
-			printf("  %s step %d (%s) %s: %s\n", strings.ToUpper(v.Level.String()), v.Step, v.Kind, v.Check, v.Text)
-		}
-	})
-	go c.Run(ctx)
-	machine := steps.New()
-	var prev snapshot.ID
 	warnedExitCode := false
-	fmt.Fprintln(out, "Watching; Ctrl-C to quit.")
-	session.Loop(ctx, batches, func(ctx context.Context) (session.Result, error) {
-		id, err := store.Snapshot("test run")
-		if err != nil {
-			return session.Result{}, fmt.Errorf("snapshot: %w", err)
-		}
-		o, err := runner.Run(ctx, cfg, dir)
-		return session.Result{Outcome: o, Snapshot: id}, err
-	}, cfg.SlowRunWarning, func(e session.Event) {
-		switch e := e.(type) {
+	a, err := app.New(dir, cfg, jd, func(m any) {
+		switch e := m.(type) {
 		case session.RunStarted:
-			if e.Changed != nil {
+			if len(e.Changed) > 0 {
 				printf("changed: %s\n", strings.Join(e.Changed, ", "))
 			}
 		case session.SlowRun:
@@ -173,31 +164,29 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 				printf("%s\n", exitCodeOnlyWarning)
 			}
 			printf("%s (%.1fs)\n", e.Outcome.State, e.Duration.Seconds())
-			obs := steps.Observation{Snapshot: e.Snapshot, State: e.Outcome.State}
-			if prev != "" {
-				diff, err := store.Diff(prev, e.Snapshot)
-				if err != nil {
-					printf("error: %v\n", err)
-				}
-				for _, d := range diff {
-					obs.TestsChanged = obs.TestsChanged || d.Kind == config.Test
-					obs.SourceChanged = obs.SourceChanged || d.Kind == config.Source
-				}
+		case steps.Event:
+			mu.Lock()
+			printStepEvent(out, e)
+			mu.Unlock()
+		case coach.Verdict:
+			if e.Level == coach.Hint || e.Level == coach.Warn {
+				printf("  %s step %d (%s) %s: %s\n", strings.ToUpper(e.Level.String()), e.Step, e.Kind, e.Check, e.Text)
 			}
-			prev = e.Snapshot
-			for _, ev := range machine.Observe(obs) {
-				mu.Lock()
-				printStepEvent(out, ev)
-				mu.Unlock()
-				if sd, ok := ev.(steps.StepDone); ok {
-					if err := c.Step(sd.Step); err != nil {
-						printf("error: %v\n", err)
-					}
-				}
+		case app.JudgeMsg:
+			if e.Err != nil {
+				printf("judge unavailable: %v\n", e.Err)
+			} else {
+				printf("judge ready (%s)\n", map[bool]string{true: "GPU", false: "CPU"}[e.GPU])
 			}
+		case app.ErrorMsg:
+			printf("error: %v\n", e.Err)
 		}
 	})
-	return nil
+	if err != nil {
+		return err
+	}
+	printf("Watching (%s); Ctrl-C to quit.\n", status)
+	return a.Run(ctx)
 }
 
 func printStepEvent(out io.Writer, ev steps.Event) {
@@ -210,6 +199,8 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 		}
 	case steps.RedInProgress:
 		fmt.Fprintln(out, "» Red in progress: the new test does not fail on an assertion yet")
+	case steps.PhaseChanged:
+		fmt.Fprintln(out, "» phase set by hand:", ev.Phase)
 	case steps.StepDone:
 		s := ev.Step
 		line := fmt.Sprintf("» step %d: %s", s.N, s.Kind)
@@ -224,6 +215,13 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 		}
 		fmt.Fprintln(out, line)
 	}
+}
+
+// controller adapts the app to the TUI's keys.
+type controller struct{ *app.App }
+
+func (c controller) WriteReport() (string, error) {
+	return "", errors.New("session report not implemented yet")
 }
 
 func cmdInit(args []string, in io.Reader, out io.Writer) error {

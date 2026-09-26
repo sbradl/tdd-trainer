@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/judge"
@@ -57,6 +58,9 @@ type Coach struct {
 
 	mu      sync.Mutex
 	queue   jobQueue
+	running *job
+	started time.Time
+	perGate time.Duration // running mean of judge time per gate
 	wake    chan struct{}
 	seq     int
 	lastRed *redEvidence
@@ -73,15 +77,46 @@ func New(store Store, scorer judge.Scorer, tppOrder string, emit func(Verdict)) 
 	return &Coach{store: store, scorer: scorer, order: tppOrder, emit: emit, wake: make(chan struct{}, 1)}
 }
 
-// Pending returns the number of gates waiting for the judge.
-func (c *Coach) Pending() int {
+// Pending returns the number of gates waiting for or being judged.
+func (c *Coach) Pending() int { return len(c.PendingGates()) }
+
+// PendingGate is a gate not judged yet, with an estimate of when its
+// verdict arrives.
+type PendingGate struct {
+	Step int
+	Gate string
+	ETA  time.Duration
+}
+
+// PendingGates lists the gates being judged and queued, in the order the
+// worker will finish them.
+func (c *Coach) PendingGates() []PendingGate {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	n := 0
-	for _, j := range c.queue {
-		n += len(j.gates)
+	per := c.perGate
+	if per == 0 {
+		per = 3 * time.Second
 	}
-	return n
+	var out []PendingGate
+	eta := time.Duration(0)
+	if c.running != nil {
+		eta = time.Duration(len(c.running.gates))*per - time.Since(c.started)
+		if eta < 0 {
+			eta = 0
+		}
+		for _, g := range c.running.gates {
+			out = append(out, PendingGate{c.running.step, g, eta})
+		}
+	}
+	q := append(jobQueue{}, c.queue...)
+	sort.Slice(q, func(i, j int) bool { return q.Less(i, j) })
+	for _, j := range q {
+		eta += time.Duration(len(j.gates)) * per
+		for _, g := range j.gates {
+			out = append(out, PendingGate{j.step, g, eta})
+		}
+	}
+	return out
 }
 
 // priority classes: lower runs first
@@ -138,6 +173,7 @@ func (c *Coach) Run(ctx context.Context) {
 		var next *job
 		if c.queue.Len() > 0 {
 			next = heap.Pop(&c.queue).(*job)
+			c.running, c.started = next, time.Now()
 		}
 		c.mu.Unlock()
 		if next == nil {
@@ -149,6 +185,17 @@ func (c *Coach) Run(ctx context.Context) {
 			}
 		}
 		vs, err := j.Evaluate(ctx, next.ev, next.gates)
+		c.mu.Lock()
+		c.running = nil
+		if err == nil {
+			d := time.Since(c.started) / time.Duration(len(next.gates))
+			if c.perGate == 0 {
+				c.perGate = d
+			} else {
+				c.perGate = (3*c.perGate + d) / 4
+			}
+		}
+		c.mu.Unlock()
 		if ctx.Err() != nil {
 			return
 		}
