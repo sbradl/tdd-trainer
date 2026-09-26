@@ -83,7 +83,7 @@ var refactorEffectOptions = []Option{
 var Lenses = map[string]string{
 	"review-smells":     "code smells (Fowler): duplicated code, long function, long parameter list, feature envy, data clumps, primitive obsession, repeated switches, shotgun surgery, divergent change, speculative generality, message chains, dead code",
 	"review-clean-code": "Clean Code (Martin): unclear, cryptic or misleading names, magic numbers, functions doing more than one thing, too many arguments, flag arguments, side effects, comments explaining bad code, inconsistent formatting",
-	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), reaching through objects (Law of Demeter), hosts, URLs, paths, credentials or limits hard-coded instead of configured, orthogonality breaks, programming by coincidence",
+	"review-pragmatic":  "Pragmatic Programmer: duplicated knowledge (DRY), Law of Demeter violations (reaching through objects), environment-specific values (hosts, URLs, paths, credentials, limits) hard-coded instead of configured, orthogonality breaks, programming by coincidence",
 	"review-philosophy": "Philosophy of Software Design (Ousterhout): shallow modules, pass-through methods or variables, information leakage (one design decision baked into several places), temporal decomposition, special-case code mixed into general code, conjoined methods, unclear interfaces",
 }
 
