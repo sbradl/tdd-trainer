@@ -19,15 +19,16 @@ import (
 const FileName = ".tddtrainer.yml"
 
 type Config struct {
-	Preset         string        `yaml:"preset"`
-	Build          string        `yaml:"build"`
-	Test           TestCmd       `yaml:"test"`
-	Results        Results       `yaml:"results"`
-	Tests          []string      `yaml:"tests"`
-	Sources        []string      `yaml:"sources"`
-	Ignore         []string      `yaml:"ignore"`
-	TPPOrder       string        `yaml:"tpp_order"`
-	SlowRunWarning time.Duration `yaml:"slow_run_warning"`
+	Preset         string            `yaml:"preset"`
+	Build          string            `yaml:"build"`
+	Test           TestCmd           `yaml:"test"`
+	Env            map[string]string `yaml:"env"` // extra environment for build and test
+	Results        Results           `yaml:"results"`
+	Tests          []string          `yaml:"tests"`
+	Sources        []string          `yaml:"sources"`
+	Ignore         []string          `yaml:"ignore"`
+	TPPOrder       string            `yaml:"tpp_order"`
+	SlowRunWarning time.Duration     `yaml:"slow_run_warning"`
 }
 
 type TestCmd struct {
@@ -54,6 +55,11 @@ func Load(dir string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	return Parse(data)
+}
+
+// Parse parses and validates config file content.
+func Parse(data []byte) (Config, error) {
 	var c Config
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)

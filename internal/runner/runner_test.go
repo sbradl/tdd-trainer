@@ -175,3 +175,30 @@ func TestRunCancelled(t *testing.T) {
 		t.Fatal("want error")
 	}
 }
+
+func TestRunPassesEnv(t *testing.T) {
+	shOnly(t)
+	cfg := config.Config{
+		Test: config.TestCmd{Cmd: `test "$TDDT_X" = yes`},
+		Env:  map[string]string{"TDDT_X": "yes"},
+	}
+	if st := mustRun(t, cfg, t.TempDir()); !st.Green() {
+		t.Fatalf("got %v", st)
+	}
+}
+
+func TestRunCreatesResultFolder(t *testing.T) {
+	shOnly(t)
+	dir := t.TempDir()
+	cfg := config.Config{
+		Test:    config.TestCmd{Cmd: "test -d a/b"},
+		Results: config.Results{Format: "junit-xml", Path: "a/b/r.xml"},
+	}
+	o, err := Run(context.Background(), cfg, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !o.State.Green() {
+		t.Fatalf("got %+v", o)
+	}
+}

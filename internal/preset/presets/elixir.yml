@@ -1,0 +1,9 @@
+preset: elixir
+test:
+  cmd: mix test
+results: { format: junit-xml, path: _build/test/lib/{{.App}}/test-junit-report.xml }
+tests: ["test/**/*_test.exs"]
+sources: ["**/*.ex", "**/*.exs"]
+ignore: [".tddtrainer/**", "_build/**", "deps/**"]
+tpp_order: recursion-first
+slow_run_warning: 5s

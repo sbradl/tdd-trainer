@@ -1,0 +1,9 @@
+preset: lua
+test:
+  cmd: busted -o junit -Xoutput .tddtrainer/results/junit.xml
+results: { format: junit-xml, path: .tddtrainer/results/junit.xml }
+tests: ["**/*_spec.lua"]
+sources: ["**/*.lua"]
+ignore: [".tddtrainer/**", "lua_modules/**", ".luarocks/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s

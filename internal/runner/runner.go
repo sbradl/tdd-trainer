@@ -38,7 +38,7 @@ const ExitCodeOnlyID = "(test run)"
 // command in flight.
 func Run(ctx context.Context, cfg config.Config, dir string) (Outcome, error) {
 	if cfg.Build != "" {
-		out, err := shell(ctx, dir, cfg.Build, nil)
+		out, err := shell(ctx, dir, cfg.Build, cfg.Env, nil)
 		if err := exitOK(ctx, err); err != nil {
 			return Outcome{}, fmt.Errorf("build: %w", err)
 		}
@@ -54,10 +54,14 @@ func Run(ctx context.Context, cfg config.Config, dir string) (Outcome, error) {
 		if err := os.Remove(resultFile); err != nil && !os.IsNotExist(err) {
 			return Outcome{}, err
 		}
+		// Some reporters (busted) fall back to stdout if the folder is missing.
+		if err := os.MkdirAll(filepath.Dir(resultFile), 0o755); err != nil {
+			return Outcome{}, err
+		}
 	}
 
 	var stdout bytes.Buffer
-	out, runErr := shell(ctx, dir, cfg.TestCmd(runtime.GOOS), &stdout)
+	out, runErr := shell(ctx, dir, cfg.TestCmd(runtime.GOOS), cfg.Env, &stdout)
 	if err := exitOK(ctx, runErr); err != nil {
 		return Outcome{}, fmt.Errorf("test: %w", err)
 	}
@@ -111,7 +115,7 @@ func exitOK(ctx context.Context, err error) error {
 
 // shell runs cmdline through the platform shell and returns stdout and
 // stderr interleaved; stdout is also copied to extra if non-nil.
-func shell(ctx context.Context, dir, cmdline string, extra *bytes.Buffer) (string, error) {
+func shell(ctx context.Context, dir, cmdline string, env map[string]string, extra *bytes.Buffer) (string, error) {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.CommandContext(ctx, "cmd", "/C", cmdline)
@@ -119,6 +123,12 @@ func shell(ctx context.Context, dir, cmdline string, extra *bytes.Buffer) (strin
 		cmd = exec.CommandContext(ctx, "sh", "-c", cmdline)
 	}
 	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
 	var combined bytes.Buffer
 	cmd.Stderr = &combined
 	cmd.Stdout = &combined

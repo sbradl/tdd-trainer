@@ -1,0 +1,15 @@
+# tddt configuration; see the preset files for examples.
+# preset: my-language
+# build: command that compiles; a failure means "build broken" (optional)
+test:
+  cmd: TODO the command that runs the whole test suite
+  # windows: override for Windows (optional)
+# env: { NAME: value }   # extra environment for build and test (optional)
+# results: junit-xml | go-json | trx; path is relative to this file, empty = stdout.
+# Without results, only the exit code is used and verdicts are weaker.
+# results: { format: junit-xml, path: test-results.xml }
+tests: ["TODO glob of test files"]
+sources: ["TODO glob of source files"]
+ignore: [".tddtrainer/**"]
+tpp_order: iteration-first   # or recursion-first
+slow_run_warning: 5s

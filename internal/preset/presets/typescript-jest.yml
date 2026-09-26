@@ -1,0 +1,20 @@
+preset: typescript-jest
+{{- if .TSConfig}}
+build: npx tsc --noEmit
+{{- end}}
+test:
+  cmd: npx jest --ci --reporters=default --reporters=jest-junit
+env:
+  JEST_JUNIT_OUTPUT_DIR: .tddtrainer/results
+  JEST_JUNIT_OUTPUT_NAME: junit.xml
+  JEST_JUNIT_REPORT_TEST_SUITE_ERRORS: "true"
+  JEST_JUNIT_ADD_FILE_ATTRIBUTE: "true"
+  JEST_JUNIT_CLASSNAME: "{classname}"
+  JEST_JUNIT_TITLE: "{title}"
+  JEST_JUNIT_SUITE_NAME: "{filepath}"
+results: { format: junit-xml, path: .tddtrainer/results/junit.xml }
+tests: ["**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}", "**/__tests__/**"]
+sources: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"]
+ignore: [".tddtrainer/**", "node_modules/**", "dist/**", "coverage/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s

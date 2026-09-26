@@ -1,0 +1,10 @@
+preset: dotnet-{{.Framework}}
+build: dotnet build -nologo -v q
+test:
+  cmd: dotnet test --no-build --nologo --logger "trx;LogFileName=tddt.trx" --results-directory .tddtrainer/results
+results: { format: trx, path: .tddtrainer/results/tddt.trx }
+tests: ["**/*Tests.cs", "**/*Test.cs", "**/*.Tests/**/*.cs", "**/*.Test/**/*.cs"]
+sources: ["**/*.cs"]
+ignore: [".tddtrainer/**", "**/bin/**", "**/obj/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s

@@ -1,0 +1,12 @@
+preset: typescript-vitest
+{{- if .TSConfig}}
+build: npx tsc --noEmit
+{{- end}}
+test:
+  cmd: npx vitest run --reporter=default --reporter=junit --outputFile.junit=.tddtrainer/results/junit.xml
+results: { format: junit-xml, path: .tddtrainer/results/junit.xml }
+tests: ["**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}", "**/__tests__/**"]
+sources: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"]
+ignore: [".tddtrainer/**", "node_modules/**", "dist/**", "coverage/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s

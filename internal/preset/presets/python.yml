@@ -1,0 +1,10 @@
+preset: python
+test:
+  cmd: python3 -m pytest -q --junitxml=.tddtrainer/results/junit.xml
+  windows: python -m pytest -q --junitxml=.tddtrainer/results/junit.xml
+results: { format: junit-xml, path: .tddtrainer/results/junit.xml }
+tests: ["**/test_*.py", "**/*_test.py"]
+sources: ["**/*.py"]
+ignore: [".tddtrainer/**", ".venv/**", "venv/**", "**/__pycache__/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s

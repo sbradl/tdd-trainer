@@ -1,6 +1,6 @@
 # Presets, init and auto-detection
 
-Status: ready-for-agent
+Status: done
 Blocked by: 02
 Spec: ../spec.md (§3)
 
@@ -18,3 +18,12 @@ In sample projects of each of the six languages, `tddt init` proposes the right 
 - vitest: `--reporter=junit --outputFile=<path>`.
 - dotnet: `--logger "trx;LogFileName=<name>" --results-directory <dir>`.
 - ExUnit junit_formatter writes `_build/test/lib/<app>/test-junit-report.xml`.
+
+## Notes from implementation
+
+- Verified end to end (init → run → Test state) on real sample projects: Go, Python, vitest, jest, .NET xUnit, Elixir. Lua not verified: busted not installed locally.
+- New config field `env` (map), used by the jest preset for jest-junit options; avoids per-shell env syntax.
+- Presets are text templates (`internal/preset/presets/*.yml`): tsc build only with tsconfig.json; Elixir app name from mix.exs; .NET framework from PackageReference.
+- Setup steps (jest-junit, junit_formatter) are skipped when the dependency is already present; with setup steps left, auto-init stops instead of running.
+- .NET: several test projects under one .sln all write `tddt.trx` → last one wins. Not handled yet.
+- Local machine note: this dotnet install needs `MSBuildEnableWorkloadResolver=false` (broken workload manifest), unrelated to tddt.

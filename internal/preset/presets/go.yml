@@ -1,0 +1,10 @@
+preset: go
+build: go vet ./...
+test:
+  cmd: go test -json ./...
+results: { format: go-json }
+tests: ["**/*_test.go"]
+sources: ["**/*.go"]
+ignore: [".tddtrainer/**", "vendor/**"]
+tpp_order: iteration-first
+slow_run_warning: 5s
