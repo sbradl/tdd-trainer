@@ -7,6 +7,10 @@
 - **Next-test hints.** Stuck on which test to write next? Press `n` while the tests are green. The first press names the kind of test ("Try an edge case."), the second the case, and the transformation it will probably need. Hints follow the ZOMBIES checklist: zero/empty, one, many, boundaries, errors. Right after a Green that faked its result with a constant, the hint is to triangulate with a second example. The judge checks your tests right after each Green, so the answer is usually there at once. When it isn't sure, it says so instead of guessing.
 - **`tddt next`** prints the same hint for the code as it is now, without a running session.
 
+### Fixes
+
+- **Filling in an existing test now starts a Red.** If you write an empty test first and give it its body later, the Red completes once the test fails on its assertion. Before, it stayed in "Red in progress" forever. A passing test you change so that it fails now counts as a Red too, not as a broken test, as long as you changed only test files.
+
 ### Reports
 
 - The focus tips say how often you asked for the next test, and for which cases most often. A new section lists each hint.

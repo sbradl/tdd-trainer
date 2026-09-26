@@ -165,10 +165,15 @@ func (m *Machine) Observe(o Observation) []Event {
 		return nil // compile errors while writing a test or code are normal
 	}
 
+	// An existing test that fails after the tests changed is being filled
+	// in or rewritten, e.g. an empty test given its body: it counts like a
+	// new one. While a Red is in progress a stub may change code too.
+	rewritten := m.pending.tests && !m.startedRed &&
+		(m.phase == PhaseRedInProgress || (m.phase == PhaseRefactor && !m.pending.source))
 	var candidates, broke []results.Failure
 	for _, f := range st.Failing {
 		switch {
-		case slices.Contains(added, f.ID) || m.inProgress[f.ID]:
+		case slices.Contains(added, f.ID) || m.inProgress[f.ID] || rewritten:
 			candidates = append(candidates, f)
 		case !prevFailing[f.ID]:
 			broke = append(broke, f)

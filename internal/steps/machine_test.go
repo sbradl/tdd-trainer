@@ -230,6 +230,39 @@ func TestTransitions(t *testing.T) {
 			{"a |", "s"},
 		}, "Baseline; RedInProgress; Anomaly(passed)[s0→s2]"},
 
+		{"existing empty test filled in: build broken, stub errors, then it fails on its assertion", []run{
+			{"a |", ""},
+			{"broken", "t"},
+			{"a | a!", "s"},
+			{"a | a", "s"},
+		}, "Baseline; RedInProgress; Red(a)[s0→s3]"},
+
+		{"empty test first, then its body, a panicking stub and a return (live session)", []run{
+			{"|", ""},
+			{"a |", "t"},
+			{"broken", "t"},
+			{"broken", "ts"},
+			{"a | a!", "t"},
+			{"a | a", "s"},
+		}, "Baseline; Anomaly(a,passed)[s0→s1]; RedInProgress; Red(a)[s1→s5]"},
+
+		{"existing test filled in, fails on its assertion once it compiles", []run{
+			{"a |", ""},
+			{"broken", "t"},
+			{"a | a", "s"},
+		}, "Baseline; RedInProgress; Red(a)[s0→s2]"},
+
+		{"existing test changed to fail on its assertion", []run{
+			{"a b |", ""},
+			{"a b | a", "t"},
+			{"a b |", "s"},
+		}, "Baseline; Red(a)[s0→s1]; Green[s1→s2]"},
+
+		{"test goes red while test and code change during refactor", []run{
+			{"a b |", ""},
+			{"a b | a", "ts"},
+		}, "Baseline; Anomaly(broke)[s0→s1]"},
+
 		{"build broken during refactor then green is still refactor", []run{
 			{"a |", ""},
 			{"broken", "s"},
