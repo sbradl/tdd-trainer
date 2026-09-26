@@ -10,6 +10,7 @@ import (
 )
 
 // A next-test hint answers "what next?" (key n) while the tests are green.
+// The coverage is judged when the learner asks, ahead of other checks.
 // The coverage gates look for the first ZOMBIES case no test checks yet;
 // right after a fake-it Green, triangulating comes first. Each request
 // reveals more: stage 1 names the kind of test, stage 2 the case.
@@ -184,8 +185,9 @@ func (c *Coach) NextTest(now snapshot.ID, phase steps.Phase, green []Verdict) er
 }
 
 // prepareNext starts judging the coverage of the tests at id, unless it is
-// known or being judged already. Refactoring keeps behaviour, so the
-// coverage stays valid until the tests change.
+// known or being judged already; only on request, as most Greens never get
+// one. Refactoring keeps behaviour, so the coverage stays valid until the
+// tests change.
 func (c *Coach) prepareNext(id snapshot.ID) (*nextState, error) {
 	if c.scorer == nil {
 		return nil, nil

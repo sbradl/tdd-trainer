@@ -143,7 +143,19 @@ func (k *kata) greenVerdicts(n int) []Verdict {
 
 func TestNextTestAfterGreenRevealsInStages(t *testing.T) {
 	k, sc, sink := nextKata(t)
-	k.drain() // coverage is judged right after the Green, before anyone asks
+	k.drain()
+	for _, g := range coverGates {
+		if _, asked := sc.evidence[g]; asked {
+			t.Fatalf("%s judged before anyone asked", g)
+		}
+	}
+	if err := k.coach.NextTest(k.prev, steps.PhaseRefactor, k.greenVerdicts(2)); err != nil {
+		t.Fatal(err)
+	}
+	if n := sink.last(); !n.Pending || n.Stage != 1 {
+		t.Fatalf("first request: %+v", n)
+	}
+	k.drain()
 	for _, g := range coverGates {
 		if !strings.Contains(sc.evidence[g], "=== Test ===\npackage kata") || !strings.Contains(sc.evidence[g], "func TestTwo") ||
 			!strings.Contains(sc.evidence[g], "=== Current source ===\npackage kata") || !strings.Contains(sc.evidence[g], "if n == 2") {
@@ -151,10 +163,6 @@ func TestNextTestAfterGreenRevealsInStages(t *testing.T) {
 		}
 	}
 	asked := len(sc.order)
-
-	if err := k.coach.NextTest(k.prev, steps.PhaseRefactor, k.greenVerdicts(2)); err != nil {
-		t.Fatal(err)
-	}
 	if n := sink.last(); n.Stage != 1 || n.Case != "many" || n.Text != "Try more than one." {
 		t.Fatalf("stage 1: %+v", n)
 	}
@@ -183,6 +191,22 @@ func TestNextTestAfterGreenRevealsInStages(t *testing.T) {
 	}
 }
 
+func TestNextTestRunsBeforeQueuedReviews(t *testing.T) {
+	k, sc, _ := nextKata(t) // the Green's gates and lenses are queued, not run
+	k.coach.NextTest(k.prev, steps.PhaseRefactor, nil)
+	k.drain()
+	first := ""
+	for _, g := range sc.order {
+		if strings.HasPrefix(g, "covers-") || g == "tpp" || strings.HasPrefix(g, "review-") {
+			first = g
+			break
+		}
+	}
+	if !strings.HasPrefix(first, "covers-") {
+		t.Fatalf("judge order: %v", sc.order)
+	}
+}
+
 func TestNextTestWaitsForTheJudge(t *testing.T) {
 	k, _, sink := nextKata(t)
 	k.coach.NextTest(k.prev, steps.PhaseRefactor, nil)
@@ -197,8 +221,8 @@ func TestNextTestWaitsForTheJudge(t *testing.T) {
 
 func TestNextTestAfterFakeItSaysTriangulate(t *testing.T) {
 	k, _, sink := nextKata(t)
-	k.drain()
 	k.coach.NextTest(k.prev, steps.PhaseRefactor, []Verdict{{Check: "tpp", Level: OK, Answer: "constant"}})
+	k.drain()
 	if n := sink.last(); n.Case != Triangulate {
 		t.Fatalf("got %+v", n)
 	}

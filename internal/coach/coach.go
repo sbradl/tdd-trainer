@@ -133,11 +133,11 @@ func (c *Coach) PendingGates() []PendingGate {
 // priority classes: lower runs first
 const (
 	prioRedCheck = iota
+	prioNext     // a next-test hint: the learner pressed n and waits for it
 	prioRed
 	prioGreen
 	prioRefactor
 	prioLenses
-	prioNext // next-test coverage: only matters once the learner asks
 )
 
 type job struct {
@@ -326,10 +326,6 @@ func (c *Coach) Step(s steps.Step) error {
 			gates = append(gates, "cheating", "step-size")
 		}
 		c.enqueue(&job{prio: prioGreen, step: s.N, kind: s.Kind, ev: ev, gates: gates, finish: c.finishGreen})
-		// judge the coverage now, so that "what next?" answers at once
-		if _, err := c.prepareNext(s.To); err != nil {
-			return err
-		}
 
 	case steps.Refactor:
 		exact("stayed green", OK, "All tests kept passing during the refactoring.")

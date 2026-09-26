@@ -37,8 +37,7 @@ On demand (key `n`, "what next?"), tell the learner which kind of test to write 
 - Tuning (lab, now with `clean_options` and `no_clean`): the first clean probe ("already checked, or meaningless?") contradicted real gaps, 15/29. A direct "Is there a test that checks this case?" gave 22/29. Rewording "one" as "a single element or the smallest non-empty input, not an empty or zero input" took it from 2/5 to 5/5.
 - Remaining misses are uncertain (silent): bowling "many" and "boundary" yes, roman-first "many" no, empty stack "error".
 - ZOMBIES order vs TPP order: ZOMBIES order wins. `next-tpp` only phrases the stage-2 hint and is often uncertain (then left out).
-- Coverage is judged right after each Green at the lowest priority, and kept while the tests don't change (refactoring keeps behaviour). A new Red drops it.
+- Coverage is judged only on request (first `n`), ahead of other checks, and kept while the tests don't change (refactoring keeps behaviour). A new Red drops it. Precomputing it after every Green cost ~7s of judge time per Green (GPU) for hints rarely asked for.
 - Done means every case is surely covered or not applicable → "Looks complete".
-- Before any Green, the first `n` press judges on demand ("Looking at your tests…").
 - `tddt next` snapshots the working tree (the code as it is now) instead of reusing the last session's snapshot. It reads the last session's last Green for triangulation.
 - The report counts every hint delivered (each stage separately). Asking for a hint never makes a cycle unclean.

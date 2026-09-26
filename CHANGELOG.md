@@ -4,7 +4,7 @@
 
 ### Coaching
 
-- **Next-test hints.** Stuck on which test to write next? Press `n` while the tests are green. The first press names the kind of test ("Try an edge case."), the second the case, and the transformation it will probably need. Hints follow the ZOMBIES checklist: zero/empty, one, many, boundaries, errors. Right after a Green that faked its result with a constant, the hint is to triangulate with a second example. The judge checks your tests right after each Green, so the answer is usually there at once. When it isn't sure, it says so instead of guessing.
+- **Next-test hints.** Stuck on which test to write next? Press `n` while the tests are green. The first press names the kind of test ("Try an edge case."), the second the case, and the transformation it will probably need. Hints follow the ZOMBIES checklist: zero/empty, one, many, boundaries, errors. Right after a Green that faked its result with a constant, the hint is to triangulate with a second example. The judge looks at your tests only when you ask, ahead of other checks, so the first press takes a few seconds. When it isn't sure, it says so instead of guessing.
 - **`tddt next`** prints the same hint for the code as it is now, without a running session.
 - **Refactor hints name the file**, as in "Worth refactoring roman.go now…", so it's clear they are about the production code, not the tests.
 

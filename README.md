@@ -114,7 +114,7 @@ Each green save while you refactor re-checks it. A cosmetic change gets "Still t
 
 ![The dashboard with the current step's checks](docs/screenshots/dashboard.svg)
 
-**6. Stuck on the next test? Press `n`.** While the tests are green, `tddt` suggests which kind of test to write next. Press once for the kind ("Try an edge case."), press again for the case ("No test yet at an edge where the result switches from one rule to another …"). The coverage is judged right after each Green, so the answer is usually there at once. If your last Green faked the result with a constant, it tells you to triangulate first. The hint goes away once you write the next test.
+**6. Stuck on the next test? Press `n`.** While the tests are green, `tddt` suggests which kind of test to write next. Press once for the kind ("Try an edge case."), press again for the case ("No test yet at an edge where the result switches from one rule to another …"). The first press takes a few seconds while the judge looks at your tests (it goes ahead of other checks); after that, each press answers at once until your tests change. If your last Green faked the result with a constant, it tells you to triangulate first. The hint goes away once you write the next test.
 
 **7. Quit with `q`.** `tddt` writes the report and prints a summary.
 
