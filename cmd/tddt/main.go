@@ -15,6 +15,7 @@ import (
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
 	"github.com/sbradl/tdd-trainer/internal/snapshot"
+	"github.com/sbradl/tdd-trainer/internal/steps"
 	"github.com/sbradl/tdd-trainer/internal/watch"
 )
 
@@ -86,12 +87,14 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 		return err
 	}
 	batches, _ := w.Run(ctx)
-	warnedExitCode := false
-	fmt.Fprintln(out, "Watching; Ctrl-C to quit.")
 	store, err := snapshot.Open(dir, cfg)
 	if err != nil {
 		return err
 	}
+	machine := steps.New()
+	var prev snapshot.ID
+	warnedExitCode := false
+	fmt.Fprintln(out, "Watching; Ctrl-C to quit.")
 	session.Loop(ctx, batches, func(ctx context.Context) (session.Result, error) {
 		id, err := store.Snapshot("test run")
 		if err != nil {
@@ -115,9 +118,50 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 				fmt.Fprintln(out, exitCodeOnlyWarning)
 			}
 			fmt.Fprintf(out, "%s (%.1fs)\n", e.Outcome.State, e.Duration.Seconds())
+			obs := steps.Observation{Snapshot: e.Snapshot, State: e.Outcome.State}
+			if prev != "" {
+				diff, err := store.Diff(prev, e.Snapshot)
+				if err != nil {
+					fmt.Fprintln(out, "error:", err)
+				}
+				for _, d := range diff {
+					obs.TestsChanged = obs.TestsChanged || d.Kind == config.Test
+					obs.SourceChanged = obs.SourceChanged || d.Kind == config.Source
+				}
+			}
+			prev = e.Snapshot
+			for _, ev := range machine.Observe(obs) {
+				printStepEvent(out, ev)
+			}
 		}
 	})
 	return nil
+}
+
+func printStepEvent(out io.Writer, ev steps.Event) {
+	switch ev := ev.(type) {
+	case steps.Baseline:
+		if ev.StartsRed {
+			fmt.Fprintln(out, "» baseline set; warning: the session starts with failing tests (treated as Red in progress)")
+		} else {
+			fmt.Fprintln(out, "» baseline set")
+		}
+	case steps.RedInProgress:
+		fmt.Fprintln(out, "» Red in progress: the new test does not fail on an assertion yet")
+	case steps.StepDone:
+		s := ev.Step
+		line := fmt.Sprintf("» step %d: %s", s.N, s.Kind)
+		if len(s.NewTests) > 0 {
+			line += " — " + strings.Join(s.NewTests, ", ")
+		}
+		for _, a := range s.Anomalies {
+			line += " [" + a.String() + "]"
+		}
+		if s.AfterGreen {
+			line += " [no refactor after the last Green]"
+		}
+		fmt.Fprintln(out, line)
+	}
 }
 
 func cmdInit(args []string, in io.Reader, out io.Writer) error {

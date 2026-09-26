@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -60,6 +61,10 @@ func TestReadersNormaliseFixtures(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := rep.State()
+			if !got.BuildBroken && len(got.Tests) < len(got.Failing) {
+				t.Errorf("Tests %v misses failing ones", got.Tests)
+			}
+			got.Tests = nil
 			for i := range got.Failing {
 				if got.Failing[i].Message == "" {
 					t.Errorf("%s: empty message", got.Failing[i].ID)
@@ -78,8 +83,12 @@ func TestPassedAndSkippedAreNotFailing(t *testing.T) {
 		{Class: "c", Name: "a", Status: Passed},
 		{Class: "c", Name: "b", Status: Skipped},
 	}}
-	if st := rep.State(); !st.Green() {
+	st := rep.State()
+	if !st.Green() {
 		t.Fatalf("want green, got %v", st)
+	}
+	if strings.Join(st.Tests, ",") != "c::a,c::b" {
+		t.Fatalf("tests %v", st.Tests)
 	}
 }
 

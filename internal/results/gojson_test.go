@@ -30,6 +30,7 @@ func TestGoJSONFailingTests(t *testing.T) {
 {"Action":"fail","Package":"kata","Test":"TestAdd","Elapsed":0}
 {"Action":"run","Package":"kata","Test":"TestSub"}
 {"Action":"pass","Package":"kata","Test":"TestSub","Elapsed":0}
+{"Action":"run","Package":"kata/sub","Test":"TestX"}
 {"Action":"run","Package":"kata/sub","Test":"TestX/case_1"}
 {"Action":"fail","Package":"kata/sub","Test":"TestX/case_1","Elapsed":0}
 {"Action":"fail","Package":"kata/sub","Test":"TestX","Elapsed":0}
@@ -42,6 +43,9 @@ func TestGoJSONFailingTests(t *testing.T) {
 	want := "kata/sub::TestX/case_1,kata::TestAdd"
 	if st.BuildBroken || strings.Join(ids, ",") != want {
 		t.Fatalf("want failing %v, got %+v", want, st)
+	}
+	if got := strings.Join(st.Tests, ","); got != "kata/sub::TestX,kata/sub::TestX/case_1,kata::TestAdd,kata::TestSub" {
+		t.Fatalf("tests %s", got)
 	}
 	if !strings.Contains(st.Failing[1].Message, "want 3") {
 		t.Fatalf("want test output as message, got %q", st.Failing[1].Message)

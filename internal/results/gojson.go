@@ -15,8 +15,8 @@ type goEvent struct {
 	FailedBuild string
 }
 
-// ReadGoJSON reads `go test -json` output; package = classname. Parent
-// tests whose failure only reflects a failing subtest are dropped.
+// ReadGoJSON reads `go test -json` output; package = classname. A parent
+// test whose failure only reflects a failing subtest counts as passing.
 func ReadGoJSON(r io.Reader) (Report, error) {
 	var order []goKey
 	status := map[goKey]Status{}
@@ -66,7 +66,7 @@ func ReadGoJSON(r io.Reader) (Report, error) {
 	for _, k := range order {
 		st := status[k]
 		if st == Failed && hasFailedSubtest(k, status) {
-			continue
+			st = Passed // its failure is reported by the failing subtest
 		}
 		res := Result{Class: k.pkg, Name: k.test, Status: st}
 		if st == Failed {

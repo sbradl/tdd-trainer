@@ -100,6 +100,9 @@ type Failure struct {
 type TestState struct {
 	BuildBroken bool
 	Failing     []Failure // sorted by ID
+	// Tests lists every reported test ID, passing or not, sorted; nil when
+	// the build is broken or only the exit code is known.
+	Tests []string
 }
 
 func (s TestState) Green() bool { return !s.BuildBroken && len(s.Failing) == 0 }
@@ -126,7 +129,9 @@ func (rep Report) State() TestState {
 		return TestState{BuildBroken: true}
 	}
 	byID := map[string]Failure{}
+	all := map[string]bool{}
 	for _, r := range rep.Tests {
+		all[r.ID()] = true
 		if r.Status != Failed {
 			continue
 		}
@@ -139,11 +144,15 @@ func (rep Report) State() TestState {
 		}
 		byID[f.ID] = f
 	}
-	var st TestState
+	st := TestState{Tests: []string{}}
 	for _, f := range byID {
 		st.Failing = append(st.Failing, f)
 	}
 	sort.Slice(st.Failing, func(i, j int) bool { return st.Failing[i].ID < st.Failing[j].ID })
+	for id := range all {
+		st.Tests = append(st.Tests, id)
+	}
+	sort.Strings(st.Tests)
 	return st
 }
 
