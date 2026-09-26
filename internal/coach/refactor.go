@@ -1,0 +1,254 @@
+package coach
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/sbradl/tdd-trainer/internal/config"
+	"github.com/sbradl/tdd-trainer/internal/judge"
+	"github.com/sbradl/tdd-trainer/internal/snapshot"
+	"github.com/sbradl/tdd-trainer/internal/steps"
+)
+
+// A refactor opportunity is found right after a Green, re-checked on every
+// green save while refactoring, and reported as missed if the next Red
+// starts before it is resolved.
+
+// refactorIssue is the review result of the last Green. Guarded by Coach.mu.
+type refactorIssue struct {
+	green    steps.Step
+	reviewed bool     // the lenses have answered
+	lenses   []string // lenses that found something; empty: nothing to do
+	problem  string   // what to refactor, for the texts
+	problems []string // the problems named in it, re-checked one by one
+	resolved bool
+	closed   bool        // the next Red started; no more rechecks
+	redStep  *steps.Step // the Red that closed it, before the review answered
+	recheck  *job
+	last     string      // text of the last recheck verdict, to report changes only
+	pending  snapshot.ID // refactored code seen before the review answered
+}
+
+const opportunity = "refactor opportunity"
+
+// reviewGreen queues the review lenses on a finished Green's diff.
+func (c *Coach) reviewGreen(g steps.Step, diff string) {
+	issue := &refactorIssue{green: g}
+	c.mu.Lock()
+	c.issue = issue
+	c.mu.Unlock()
+	ev := judge.Evidence{judge.PartDiff: diff}
+	c.enqueue(&job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: ev, gates: judge.LensNames(),
+		finish: func(vs map[string]judge.Verdict) []Verdict {
+			var found []string
+			maxP := 0.0
+			for _, name := range judge.LensNames() {
+				if v := vs[name]; v.Answer == "yes" {
+					found = append(found, name)
+					maxP = max(maxP, v.P)
+				}
+			}
+			if len(found) == 0 {
+				return c.reviewed(issue, nil, "", nil, Verdict{Check: opportunity, Level: OK, Text: "Nothing worth refactoring in this Green."})
+			}
+			which := make([]string, len(found))
+			for i, n := range found {
+				which[i] = n + "~which"
+			}
+			c.enqueue(&job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: ev, gates: which,
+				finish: func(ws map[string]judge.Verdict) []Verdict {
+					problem, problems := problemText(found, ws)
+					return c.reviewed(issue, found, problem, problems, Verdict{Check: opportunity, Level: Hint, P: maxP, Text: fmt.Sprintf(
+						"Worth refactoring now, while the tests are green: %s The hint updates as you refactor (tddt show %d).", problem, g.N)})
+				}})
+			return nil
+		}})
+}
+
+// reviewed records the review result; if the next Red already started,
+// the missed-refactor verdict for it follows too.
+func (c *Coach) reviewed(issue *refactorIssue, lenses []string, problem string, problems []string, v Verdict) []Verdict {
+	c.mu.Lock()
+	issue.reviewed, issue.lenses, issue.problem, issue.problems = true, lenses, problem, problems
+	red, pending := issue.redStep, issue.pending
+	c.mu.Unlock()
+	if red != nil {
+		mv := missedVerdict(issue)
+		mv.Step, mv.Kind = red.N, red.Kind
+		c.emit(mv)
+	}
+	if pending != "" && red == nil {
+		if err := c.Recheck(pending); err != nil {
+			c.emit(Verdict{Step: issue.green.N, Kind: issue.green.Kind, Check: "judge", Level: Uncertain, Text: "re-check failed: " + err.Error()})
+		}
+	}
+	return []Verdict{v}
+}
+
+// Recheck asks, for each problem the review found, whether the change
+// from the flagged code to the code now removes it; after a green save
+// while refactoring. Only the newest recheck runs.
+func (c *Coach) Recheck(now snapshot.ID) error {
+	c.mu.Lock()
+	issue := c.issue
+	if issue != nil && !issue.reviewed && !issue.closed {
+		issue.pending = now // re-check once the review has answered
+	}
+	if issue == nil || !issue.reviewed || issue.closed || len(issue.problems) == 0 {
+		c.mu.Unlock()
+		return nil
+	}
+	flagged, problems := issue.green.To, issue.problems
+	if issue.recheck != nil {
+		issue.recheck.cancelled = true
+	}
+	c.mu.Unlock()
+
+	diffs, err := c.store.Diff(flagged, now)
+	if err != nil {
+		return err
+	}
+	var diff strings.Builder
+	for _, d := range diffs {
+		if d.Kind == config.Source {
+			diff.WriteString(d.Patch)
+		}
+	}
+	if diff.Len() == 0 {
+		return nil // back to the flagged code: nothing new to judge
+	}
+	g := issue.green
+	var gates []judge.Gate
+	var names []string
+	for i, p := range problems {
+		fg := judge.FixedGate(p)
+		fg.Name = fmt.Sprintf("refactor-fixed~%d", i)
+		gates = append(gates, fg)
+		names = append(names, fg.Name)
+	}
+	j := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: diff.String()}, gates: names, adhoc: gates,
+		finish: func(vs map[string]judge.Verdict) []Verdict {
+			fixed, open := 0, 0
+			for _, n := range names {
+				switch vs[n].Answer {
+				case "yes":
+					fixed++
+				case "no":
+					open++
+				}
+			}
+			var v Verdict
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			if issue.closed {
+				return nil // the next Red started meanwhile
+			}
+			switch {
+			case fixed == len(names):
+				issue.resolved = true
+				v = Verdict{Check: opportunity, Level: OK, Text: "Resolved: your refactoring removed " + lowerFirst(issue.problem)}
+			case open > 0:
+				issue.resolved = false
+				v = Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf("Still there after your last change: %s (tddt show %d)", issue.problem, g.N)}
+			default:
+				return nil // not sure either way: keep the last verdict
+			}
+			if v.Text == issue.last {
+				return nil
+			}
+			issue.last = v.Text
+			return []Verdict{v}
+		}}
+	c.mu.Lock()
+	issue.recheck = j
+	c.mu.Unlock()
+	c.enqueue(j)
+	return nil
+}
+
+// redStarted closes the last Green's issue: unresolved means missed.
+func (c *Coach) redStarted(red steps.Step) {
+	c.mu.Lock()
+	issue := c.issue
+	if issue == nil || issue.closed {
+		c.mu.Unlock()
+		return
+	}
+	issue.closed = true
+	if issue.recheck != nil {
+		issue.recheck.cancelled = true
+	}
+	if !issue.reviewed {
+		issue.redStep = &red // the review will report it
+		c.mu.Unlock()
+		return
+	}
+	c.mu.Unlock()
+	v := missedVerdict(issue)
+	v.Step, v.Kind = red.N, red.Kind
+	c.emit(v)
+}
+
+func missedVerdict(issue *refactorIssue) Verdict {
+	switch {
+	case len(issue.lenses) == 0:
+		return Verdict{Check: "missed refactor", Level: OK, Text: "Nothing needed refactoring before this test."}
+	case issue.resolved:
+		return Verdict{Check: "missed refactor", Level: OK, Text: fmt.Sprintf("You cleaned up after step %d before writing this test.", issue.green.N)}
+	}
+	return Verdict{Check: "missed refactor", Level: Hint, Text: fmt.Sprintf(
+		"You started this test without cleaning up after step %d: %s Refactor once this test passes (tddt show %d).", issue.green.N, issue.problem, issue.green.N)}
+}
+
+// problemText names the one or two clearest problems the lenses found,
+// and returns their descriptions for re-checking.
+func problemText(lenses []string, which map[string]judge.Verdict) (string, []string) {
+	type problem struct {
+		desc string
+		p    float64
+		sure bool
+	}
+	var ps []problem
+	seen := map[string]bool{}
+	for _, name := range lenses {
+		w := which[name+"~which"]
+		for _, o := range judge.LensProblems[name] {
+			if o.ID == w.Top && !seen[o.Desc] {
+				seen[o.Desc] = true
+				ps = append(ps, problem{o.Desc, w.P, w.Answer != judge.Uncertain})
+			}
+		}
+	}
+	sort.SliceStable(ps, func(i, j int) bool {
+		if ps[i].sure != ps[j].sure {
+			return ps[i].sure
+		}
+		return ps[i].p > ps[j].p
+	})
+	if len(ps) > 2 {
+		ps = ps[:2]
+	}
+	if len(ps) == 2 && ps[0].sure && !ps[1].sure {
+		ps = ps[:1]
+	}
+	var descs []string
+	for _, x := range ps {
+		descs = append(descs, x.desc)
+	}
+	switch len(ps) {
+	case 0:
+		return "the review found something to clean up.", nil
+	case 1:
+		if !ps[0].sure {
+			return "probably " + lowerFirst(ps[0].desc), descs
+		}
+		return ps[0].desc, descs
+	}
+	var names []string
+	for _, x := range ps {
+		short, _, _ := strings.Cut(x.desc, ":")
+		names = append(names, lowerFirst(strings.TrimSuffix(short, ".")))
+	}
+	return strings.Join(names, ", and ") + ".", descs
+}

@@ -26,18 +26,27 @@ type Judge struct{ Scorer Scorer }
 // Evaluate answers the named gates over the evidence. Gates that see the
 // same evidence are scored together so a Scorer can reuse its state.
 func (j Judge) Evaluate(ctx context.Context, ev Evidence, names []string) ([]Verdict, error) {
-	type probe struct {
-		gate  int // index into names
-		clean bool
-		g     Gate
-	}
-	groups := map[string][]probe{}
-	var order []string
+	gates := make([]Gate, len(names))
 	for i, n := range names {
 		g, ok := Gates[n]
 		if !ok {
 			return nil, fmt.Errorf("unknown gate %q", n)
 		}
+		gates[i] = g
+	}
+	return j.EvaluateGates(ctx, ev, gates)
+}
+
+// EvaluateGates is Evaluate for gates built on the fly, such as FixedGate.
+func (j Judge) EvaluateGates(ctx context.Context, ev Evidence, gates []Gate) ([]Verdict, error) {
+	type probe struct {
+		gate  int // index into gates
+		clean bool
+		g     Gate
+	}
+	groups := map[string][]probe{}
+	var order []string
+	for i, g := range gates {
 		st := g.State(ev)
 		if _, seen := groups[st]; !seen {
 			order = append(order, st)
@@ -48,8 +57,8 @@ func (j Judge) Evaluate(ctx context.Context, ev Evidence, names []string) ([]Ver
 		}
 	}
 
-	main := make([][]float64, len(names))
-	clean := make([][]float64, len(names))
+	main := make([][]float64, len(gates))
+	clean := make([][]float64, len(gates))
 	for _, st := range order {
 		ps := groups[st]
 		gs := make([]Gate, len(ps))
@@ -69,9 +78,9 @@ func (j Judge) Evaluate(ctx context.Context, ev Evidence, names []string) ([]Ver
 		}
 	}
 
-	out := make([]Verdict, len(names))
-	for i, n := range names {
-		out[i] = decide(Gates[n], main[i], clean[i])
+	out := make([]Verdict, len(gates))
+	for i, g := range gates {
+		out[i] = decide(g, main[i], clean[i])
 	}
 	return out, nil
 }

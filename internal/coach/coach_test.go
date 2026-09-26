@@ -44,6 +44,13 @@ func (s *scripted) Score(ctx context.Context, state string, gates []judge.Gate) 
 		s.evidence[g.Name] = state
 		s.order = append(s.order, g.Name)
 		ans := s.answers[strings.TrimSuffix(g.Name, "~clean")]
+		if strings.HasPrefix(g.Name, "refactor-fixed") {
+			// a refactoring to strings.Repeat removes the if-chain; anything else does not
+			ans = "no"
+			if strings.Contains(state, "+import \"strings\"") {
+				ans = "yes"
+			}
+		}
 		if s.answer != nil {
 			if a := s.answer(g.Name, state); a != "" {
 				ans = a
@@ -137,6 +144,24 @@ func (k *kata) run(tests string, failing ...string) {
 			}
 		}
 	}
+	if st.Green() && obs.SourceChanged && k.machine.Phase() == steps.PhaseRefactor {
+		if err := k.coach.Recheck(id); err != nil {
+			k.t.Fatal(err)
+		}
+	}
+}
+
+// last returns the newest verdict of a check for a step.
+func (k *kata) last(step int, check string) *Verdict {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	for i := len(k.got) - 1; i >= 0; i-- {
+		if k.got[i].Step == step && k.got[i].Check == check {
+			v := k.got[i]
+			return &v
+		}
+	}
+	return nil
 }
 
 func (k *kata) drain() []string {
@@ -215,8 +240,10 @@ func TestKataReplay(t *testing.T) {
 		"1 Red one-behaviour:ok", "3 Red one-behaviour:ok",
 		"2 Green tpp:ok", "2 Green step-size:ok", "2 Green multi:ok", "2 Green cheating:ok",
 		"4 Green tpp:ok", "4 Green step-size:hint", "4 Green multi:ok", "4 Green cheating:ok",
+		// each Green is reviewed for refactoring; the next Red learns the result
+		"3 Red missed refactor:ok", "2 Green refactor opportunity:ok",
+		"6 Red missed refactor:ok", "4 Green refactor opportunity:ok",
 		"5 Refactor structural:ok", "5 Refactor refactor-effect:ok",
-		"3 Red missed refactor:ok",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("got:\n%s\n\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
@@ -243,8 +270,8 @@ func TestKataReplay(t *testing.T) {
 	if !strings.Contains(ev["tpp"], "+\tfor i := 0; i < n; i++ {") || strings.Contains(ev["tpp"], "func Test") {
 		t.Errorf("tpp evidence:\n%s", ev["tpp"])
 	}
-	if !strings.Contains(ev["review-smells"], `-func Roman(n int) string { return "" }`) {
-		t.Errorf("lenses must see the previous Green's diff:\n%s", ev["review-smells"])
+	if !strings.Contains(ev["review-smells"], "+\tfor i := 0; i < n; i++ {") || strings.Contains(ev["review-smells"], "func Test") {
+		t.Errorf("lenses must see the Green's source diff:\n%s", ev["review-smells"])
 	}
 }
 
@@ -343,9 +370,81 @@ func TestTPPLabelHonoursOrder(t *testing.T) {
 	}
 }
 
-func TestMissedRefactorSaysWhatToRefactor(t *testing.T) {
+// smellyKata: step 1 Red, step 2 Green that special-cases n == 2.
+// The smells lens flags code containing a special case for 2.
+func smellyKata(t *testing.T) *kata {
 	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
 		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no", "cheating": "no",
+		"structural": "yes", "refactor-effect": "improves", "review-smells~which": "repeated-switch",
+	}, answer: func(gate, state string) string {
+		if strings.HasPrefix(gate, "review-smells") && !strings.HasSuffix(gate, "~which") {
+			if strings.Contains(state, "+\tif n == 2") {
+				return "yes"
+			}
+			return "no"
+		}
+		return ""
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II"))
+	k.run("TestOne TestTwo", "TestTwo")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 2 {\n\t\treturn \"II\"\n\t}\n\treturn \"I\"\n}\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	return k
+}
+
+func TestRefactorOpportunityRightAfterGreen(t *testing.T) {
+	k := smellyKata(t)
+	v := k.last(2, "refactor opportunity")
+	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "Repeated conditionals") || !strings.Contains(v.Text, "while the tests are green") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestRefactoringResolvesTheOpportunity(t *testing.T) {
+	k := smellyKata(t)
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved: your refactoring removed repeated conditionals") {
+		t.Fatalf("got %+v", v)
+	}
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
+	k.run("TestOne TestTwo TestThree", "TestThree")
+	k.drain()
+	if v := k.last(4, "missed refactor"); v == nil || v.Level != OK || !strings.Contains(v.Text, "cleaned up after step 2") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestRefactoringSomethingElseKeepsTheHint(t *testing.T) {
+	k := smellyKata(t)
+	k.write("kata.go", "package kata\n\n// Roman converts n.\nfunc Roman(n int) string {\n\tif n == 2 {\n\t\treturn \"II\"\n\t}\n\treturn \"I\"\n}\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != Hint || !strings.HasPrefix(v.Text, "Still there after your last change") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestSkippingTheRefactorIsMissed(t *testing.T) {
+	k := smellyKata(t)
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
+	k.run("TestOne TestTwo TestThree", "TestThree")
+	k.drain()
+	v := k.last(3, "missed refactor")
+	if v == nil || v.Level != Hint || !strings.Contains(v.Text, "without cleaning up after step 2") || !strings.Contains(v.Text, "Repeated conditionals") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestMissedRefactorWhenTheReviewIsStillRunning(t *testing.T) {
+	// the next Red starts before the judge reviewed the Green
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
 		"review-smells": "yes", "review-smells~clean": "yes", "review-smells~which": "duplicated",
 	}}
 	k := newKata(t, sc)
@@ -359,40 +458,50 @@ func TestMissedRefactorSaysWhatToRefactor(t *testing.T) {
 	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II"))
 	k.run("TestOne TestTwo", "TestTwo")
 	k.drain()
-	var hint *Verdict
-	for i, v := range k.got {
-		if v.Check == "missed refactor" {
-			if hint != nil {
-				t.Fatalf("two missed-refactor verdicts: %+v", k.got)
-			}
-			hint = &k.got[i]
-		}
-	}
-	if hint == nil || hint.Level != Hint || hint.Step != 3 {
-		t.Fatalf("got %+v", hint)
-	}
-	for _, want := range []string{"step 2", "tddt show 2", "Duplicated code"} {
-		if !strings.Contains(hint.Text, want) {
-			t.Errorf("hint %q misses %q", hint.Text, want)
-		}
-	}
-	if !strings.Contains(sc.evidence["review-smells~which"], `+func Roman(n int) string { return "I" }`) {
-		t.Errorf("which-probe evidence:\n%s", sc.evidence["review-smells~which"])
+	if v := k.last(3, "missed refactor"); v == nil || v.Level != Hint || !strings.Contains(v.Text, "Duplicated code") {
+		t.Fatalf("got %+v", v)
 	}
 }
 
-func TestMissedRefactorHintKeepsTheClearestTwo(t *testing.T) {
+func TestProblemTextKeepsTheClearestTwo(t *testing.T) {
 	w := func(top, answer string, p float64) judge.Verdict {
 		return judge.Verdict{Top: top, Answer: answer, P: p}
 	}
-	v := missedRefactorHint(9, []string{"review-clean-code", "review-philosophy", "review-pragmatic", "review-smells"}, map[string]judge.Verdict{
+	got, _ := problemText([]string{"review-clean-code", "review-philosophy", "review-pragmatic", "review-smells"}, map[string]judge.Verdict{
 		"review-clean-code~which": w("magic", "magic", 0.7),
 		"review-philosophy~which": w("special-case", "special-case", 0.9),
 		"review-pragmatic~which":  w("dry", "dry", 0.6),
 		"review-smells~which":     w("duplicated", judge.Uncertain, 0.4),
-	}, 0.9)
-	want := "The last Green (step 9) left something to refactor: special-case code mixed into general code, and magic numbers or strings. Clean it up before the next Red (tddt show 9)."
-	if v.Text != want {
-		t.Fatalf("got  %q\nwant %q", v.Text, want)
+	})
+	if want := "special-case code mixed into general code, and magic numbers or strings."; got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
+	}
+}
+
+func TestRefactoringBeforeTheReviewAnsweredIsRechecked(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{"review-smells~which": "repeated-switch"},
+		answer: func(gate, state string) string {
+			if strings.HasPrefix(gate, "review-smells") && !strings.HasSuffix(gate, "~which") {
+				if strings.Contains(state, "+\tif n == 2") {
+					return "yes"
+				}
+				return "no"
+			}
+			return ""
+		}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II"))
+	k.run("TestOne TestTwo", "TestTwo")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 2 {\n\t\treturn \"II\"\n\t}\n\treturn \"I\"\n}\n")
+	k.run("TestOne TestTwo")
+	// refactored before the judge ran at all
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved") {
+		t.Fatalf("got %+v", v)
 	}
 }

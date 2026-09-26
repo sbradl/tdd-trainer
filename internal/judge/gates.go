@@ -269,3 +269,11 @@ func pyJSONString(s string) string {
 	b.WriteByte('"')
 	return b.String()
 }
+
+// FixedGate asks whether a diff from flagged code to the code now removes
+// a problem the review found. Evaluate it with Judge.EvaluateGates.
+func FixedGate(problem string) Gate {
+	return Gate{Name: "refactor-fixed", Options: yesNo, Parts: []Part{PartDiff}, Floor: floor,
+		Question: "A reviewer found this problem in the code before this diff: " + problem +
+			" Does this diff remove the problem, so that the code after it no longer shows it?"}
+}

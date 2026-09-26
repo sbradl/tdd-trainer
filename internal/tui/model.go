@@ -124,7 +124,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case coach.Verdict:
 		if sv := m.byN[msg.Step]; sv != nil {
-			sv.verdicts = append(sv.verdicts, msg)
+			for _, old := range sv.verdicts {
+				if old.Check == msg.Check && old.Level == coach.Hint && msg.Level == coach.OK {
+					m.showToast(msg.Text) // a hint was resolved: say so, the card goes away
+				}
+			}
+			sv.verdicts = coach.Upsert(sv.verdicts, msg)
 		}
 		if msg.Level == coach.OK {
 			m.okCount++

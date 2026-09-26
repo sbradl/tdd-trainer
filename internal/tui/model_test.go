@@ -163,3 +163,17 @@ func TestViewFitsSmallTerminal(t *testing.T) {
 		t.Fatalf("%d lines for height 8:\n%s", n, m.View())
 	}
 }
+
+func TestResolvedHintReplacesItsCard(t *testing.T) {
+	m := New(&fakeCtl{}, "")
+	session1(m)
+	feed(m, verdict(2, steps.Green, "refactor opportunity", coach.Hint, "Worth refactoring now: repeated conditionals."))
+	if !strings.Contains(m.View(), "Worth refactoring now") {
+		t.Fatalf("no card:\n%s", m.View())
+	}
+	feed(m, verdict(2, steps.Green, "refactor opportunity", coach.OK, "Resolved: repeated conditionals is cleaned up."))
+	v := m.View()
+	if strings.Contains(v, "Worth refactoring now") || !strings.Contains(v, "Resolved: repeated conditionals") {
+		t.Fatalf("card not replaced or no toast:\n%s", v)
+	}
+}

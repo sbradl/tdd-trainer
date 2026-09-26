@@ -64,9 +64,7 @@ type Coach struct {
 	wake    chan struct{}
 	seq     int
 	lastRed *redEvidence
-	// last completed Green's source diff, for the missed-refactor lenses
-	lastGreenDiff string
-	lastGreenStep int
+	issue   *refactorIssue // what the last Green's review found
 }
 
 type redEvidence struct {
@@ -114,6 +112,9 @@ func (c *Coach) PendingGates() []PendingGate {
 	q := append(jobQueue{}, c.queue...)
 	sort.Slice(q, func(i, j int) bool { return q.Less(i, j) })
 	for _, j := range q {
+		if j.cancelled {
+			continue
+		}
 		eta += time.Duration(len(j.gates)) * per
 		for _, g := range j.gates {
 			out = append(out, PendingGate{j.step, g, eta})
@@ -136,7 +137,9 @@ type job struct {
 	kind            steps.Kind
 	ev              judge.Evidence
 	gates           []string
+	adhoc           []judge.Gate // gates built on the fly; gates holds their names
 	finish          func(map[string]judge.Verdict) []Verdict
+	cancelled       bool // superseded before it ran; guarded by Coach.mu
 }
 
 type jobQueue []*job
@@ -174,9 +177,13 @@ func (c *Coach) Run(ctx context.Context) {
 	for {
 		c.mu.Lock()
 		var next *job
-		if c.queue.Len() > 0 {
+		for c.queue.Len() > 0 {
 			next = heap.Pop(&c.queue).(*job)
-			c.running, c.started = next, time.Now()
+			if !next.cancelled {
+				c.running, c.started = next, time.Now()
+				break
+			}
+			next = nil
 		}
 		c.mu.Unlock()
 		if next == nil {
@@ -187,7 +194,13 @@ func (c *Coach) Run(ctx context.Context) {
 				continue
 			}
 		}
-		vs, err := j.Evaluate(ctx, next.ev, next.gates)
+		var vs []judge.Verdict
+		var err error
+		if next.adhoc != nil {
+			vs, err = j.EvaluateGates(ctx, next.ev, next.adhoc)
+		} else {
+			vs, err = j.Evaluate(ctx, next.ev, next.gates)
+		}
 		c.mu.Lock()
 		if err == nil {
 			d := time.Since(c.started) / time.Duration(len(next.gates))
@@ -275,28 +288,17 @@ func (c *Coach) Step(s steps.Step) error {
 		if len(s.NewTests) == 1 { // several new tests are already an anomaly
 			c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
 		}
-		if s.AfterGreen {
-			c.mu.Lock()
-			diff, green := c.lastGreenDiff, c.lastGreenStep
-			c.mu.Unlock()
-			if strings.TrimSpace(diff) != "" {
-				ev := judge.Evidence{judge.PartDiff: diff}
-				c.enqueue(&job{prio: prioLenses, step: s.N, kind: s.Kind, ev: ev,
-					gates: judge.LensNames(), finish: func(vs map[string]judge.Verdict) []Verdict {
-						return c.finishLenses(s, green, ev, vs)
-					}})
-			}
-		}
+		c.redStarted(s)
 
 	case steps.Green:
 		c.mu.Lock()
 		red := c.lastRed
-		c.lastGreenDiff, c.lastGreenStep = sourceDiff, s.N
 		c.mu.Unlock()
 		if strings.TrimSpace(sourceDiff) == "" {
 			exact("tpp", OK, "No production code changed.")
 			return nil
 		}
+		c.reviewGreen(s, sourceDiff)
 		ev := judge.Evidence{judge.PartDiff: sourceDiff}
 		gates := []string{"tpp", "multi"}
 		if red != nil {

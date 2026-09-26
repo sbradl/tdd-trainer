@@ -262,13 +262,19 @@ func (a *App) event(e session.Event) {
 	if stepped {
 		a.save()
 	}
+	// While refactoring, every green save re-checks an open refactor hint.
+	if obs.State.Green() && obs.SourceChanged && phase == steps.PhaseRefactor {
+		if err := a.coach.Recheck(done.Snapshot); err != nil {
+			a.sink(ErrorMsg{err})
+		}
+	}
 	a.sink(PhaseMsg{phase})
 }
 
 func (a *App) verdict(v coach.Verdict) {
 	a.mu.Lock()
 	if i, ok := a.byStep[v.Step]; ok {
-		a.hist.Steps[i].Verdicts = append(a.hist.Steps[i].Verdicts, v)
+		a.hist.Steps[i].Verdicts = coach.Upsert(a.hist.Steps[i].Verdicts, v)
 	}
 	a.mu.Unlock()
 	a.sink(v)

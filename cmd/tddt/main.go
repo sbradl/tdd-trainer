@@ -184,6 +184,9 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 			printStepEvent(out, e)
 			mu.Unlock()
 		case coach.Verdict:
+			if e.Level == coach.OK && strings.HasPrefix(e.Text, "Resolved") {
+				printf("  RESOLVED step %d (%s) %s: %s\n", e.Step, e.Kind, coach.Label(e.Check), e.Text)
+			}
 			if e.Level == coach.Hint || e.Level == coach.Warn {
 				printf("  %s step %d (%s) %s: %s\n", strings.ToUpper(e.Level.String()), e.Step, e.Kind, coach.Label(e.Check), e.Text)
 			}
