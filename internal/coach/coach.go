@@ -246,10 +246,10 @@ func (c *Coach) Step(s steps.Step) error {
 	switch s.Kind {
 	case steps.Red:
 		if len(s.NewTests) == 1 {
-			exact("new tests", OK, "exactly 1 new test")
+			exact("new tests", OK, "Exactly one new failing test: "+s.NewTests[0]+".")
 		}
 		if testAdded > MaxTestLines {
-			exact("test size", Hint, fmt.Sprintf("The new test adds %d lines; a smaller test makes a smaller step.", testAdded))
+			exact("test size", Hint, fmt.Sprintf("The new test adds %d lines. A smaller test makes a smaller step: can you test less at once?", testAdded))
 		}
 		ev := judge.Evidence{
 			judge.PartTest:       addedLines(testDiff),
@@ -268,7 +268,7 @@ func (c *Coach) Step(s steps.Step) error {
 		c.mu.Unlock()
 
 		if allAssertions(s) {
-			exact("red-check", OK, "fails for the right reason (assertion)")
+			exact("red-check", OK, "It fails on its assertion (expected vs actual), so it proves the behaviour is missing.")
 		} else {
 			c.enqueue(&job{prio: prioRedCheck, step: s.N, kind: s.Kind, ev: ev, gates: []string{"red-check"}, finish: finishRedCheck})
 		}
@@ -292,7 +292,7 @@ func (c *Coach) Step(s steps.Step) error {
 		c.lastGreenDiff, c.lastGreenStep = sourceDiff, s.N
 		c.mu.Unlock()
 		if strings.TrimSpace(sourceDiff) == "" {
-			exact("tpp", OK, "no production code changed")
+			exact("tpp", OK, "No production code changed.")
 			return nil
 		}
 		ev := judge.Evidence{judge.PartDiff: sourceDiff}
@@ -306,7 +306,7 @@ func (c *Coach) Step(s steps.Step) error {
 		c.enqueue(&job{prio: prioGreen, step: s.N, kind: s.Kind, ev: ev, gates: gates, finish: c.finishGreen})
 
 	case steps.Refactor:
-		exact("stayed green", OK, "all tests stayed green")
+		exact("stayed green", OK, "All tests kept passing during the refactoring.")
 		if strings.TrimSpace(sourceDiff+testDiff) == "" {
 			return nil
 		}

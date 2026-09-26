@@ -67,7 +67,7 @@ func TestQuietViewShowsStatusAndCards(t *testing.T) {
 	m := New(&fakeCtl{}, "judge loading")
 	session1(m)
 	v := m.View()
-	for _, want := range []string{"● Refactor", "1 passed", "✓ 1", "step 2 · Green · step-size", "A simpler change would have done."} {
+	for _, want := range []string{"● Refactor", "1 passed", "✓ 1", "step 2 · Green · Simplest change", "A simpler change would have done."} {
 		if !strings.Contains(v, want) {
 			t.Errorf("missing %q in:\n%s", want, v)
 		}
@@ -111,7 +111,7 @@ func TestDashboard(t *testing.T) {
 	m.Update(tickMsg(time.Now()))
 	m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	v := m.View()
-	for _, want := range []string{"REFACTOR", "cycle  R✓ G", "step   2 · Green", "step-size", "multi", "not sure", "cheating", "in ~7s"} {
+	for _, want := range []string{"REFACTOR", "cycle  R✓ G", "step   2 · Green", "Simplest change", "One transformation", "not sure", "No test-specific code", "in ~7s"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("missing %q in:\n%s", want, v)
 		}

@@ -48,11 +48,12 @@ func TestReportSections(t *testing.T) {
 		"# TDD session report — 2026-09-26 10:00",
 		"| 12m30s | 3 | 4 | 1 of 3 (33%) |",
 		"> 2 gates were still being judged",
-		"## Focus tips", "1. **cheating** (2×): The code special-cases",
-		"## Cycles", "### Cycle 1", "### Cycle 3", "| 5 | Red — four, five | ⚠ anomaly: Several new tests",
+		"## Focus tips", "1. **No test-specific code** (2×): The code special-cases",
+		"## Cycles", "### Cycle 1", "### Cycle 3", "| 5 | Red — four, five | ⚠ **Cycle rhythm**: Several new tests",
 		"## Transformation path", "2: Nil → Constant (2/8) → 4: Unconditional → Selection (4/8)",
 		"## Anomalies and missed refactors", "- Step 3 (Red): The last Green left", "- Step 5 (Red): Several new tests",
-		"## Uncertain verdicts", "- Step 2 (Green) multi: not sure (p=0.63)",
+		"## Uncertain verdicts", "- Step 2 (Green) One transformation: not sure (p=0.63)",
+		"## What the checks mean", "- **One transformation**: A Green applies one transformation",
 		"<details><summary>Step 4 diff</summary>", "+\tif n == 9 {",
 		"<details><summary>Step 2 diff (the Green before step 3)</summary>",
 	} {
@@ -105,7 +106,7 @@ func TestShow(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := b.String()
-	for _, want := range []string{"Step 2: Green", "✓ tpp", "? multi", "not sure", "+\tif n == 9 {"} {
+	for _, want := range []string{"Step 2: Green", "✓ Transformation", "? One transformation", "not sure", "+\tif n == 9 {"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}

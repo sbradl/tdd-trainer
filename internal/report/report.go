@@ -172,12 +172,13 @@ func Render(h app.History, pending int, d Differ) string {
 		b.WriteString("Nothing stood out. Keep going.\n\n")
 	}
 	for i, t := range ts {
-		fmt.Fprintf(&b, "%d. **%s** (%d×): %s\n", i+1, t.check, t.n, t.text)
+		fmt.Fprintf(&b, "%d. **%s** (%d×): %s\n", i+1, coach.Label(t.check), t.n, t.text)
 	}
 	if len(ts) > 0 {
 		b.WriteString("\n")
 	}
 
+	used := map[string]bool{}
 	b.WriteString("## Cycles\n\n")
 	if len(h.Steps) == 0 {
 		b.WriteString("No steps yet.\n\n")
@@ -195,11 +196,8 @@ func Render(h app.History, pending int, d Differ) string {
 				if v.Level == coach.Uncertain {
 					continue // listed in their own section
 				}
-				text := v.Check
-				if v.Level != coach.OK || v.Check == "tpp" {
-					text += ": " + v.Text
-				}
-				vs = append(vs, icon(v.Level)+" "+cell(text))
+				used[v.Check] = true
+				vs = append(vs, icon(v.Level)+" **"+coach.Label(v.Check)+"**: "+cell(v.Text))
 			}
 			kind := r.Step.Kind.String()
 			if len(r.Step.NewTests) > 0 {
@@ -249,13 +247,27 @@ func Render(h app.History, pending int, d Differ) string {
 	for _, r := range h.Steps {
 		for _, v := range r.Verdicts {
 			if v.Level == coach.Uncertain {
-				fmt.Fprintf(&b, "- Step %d (%s) %s: %s\n", r.Step.N, r.Step.Kind, v.Check, v.Text)
+				used[v.Check] = true
+				fmt.Fprintf(&b, "- Step %d (%s) %s: %s\n", r.Step.N, r.Step.Kind, coach.Label(v.Check), v.Text)
 				n++
 			}
 		}
 	}
 	if n == 0 {
 		b.WriteString("None.\n")
+	}
+	if len(used) > 0 {
+		b.WriteString("\n## What the checks mean\n\n")
+		var names []string
+		for c := range used {
+			names = append(names, c)
+		}
+		sort.Slice(names, func(i, j int) bool { return coach.Label(names[i]) < coach.Label(names[j]) })
+		for _, c := range names {
+			if a := coach.About(c); a != "" {
+				fmt.Fprintf(&b, "- **%s**: %s\n", coach.Label(c), a)
+			}
+		}
 	}
 	fmt.Fprintf(&b, "\nFull diffs: `tddt show <step>`.\n")
 	return b.String()

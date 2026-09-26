@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sbradl/tdd-trainer/internal/app"
+	"github.com/sbradl/tdd-trainer/internal/coach"
 )
 
 // Show prints step n of the history: kind, verdicts (uncertain ones
@@ -28,7 +29,7 @@ func Show(w io.Writer, h app.History, n int, d Differ) error {
 			fmt.Fprintln(w)
 		}
 		for _, v := range r.Verdicts {
-			fmt.Fprintf(w, "%s %-16s %s\n", icon(v.Level), v.Check, v.Text)
+			fmt.Fprintf(w, "%s %-28s %s\n", icon(v.Level), coach.Label(v.Check), v.Text)
 		}
 		if s.From == s.To {
 			fmt.Fprintln(w, "\n(no changes)")

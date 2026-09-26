@@ -10,7 +10,7 @@ import (
 
 func gateVerdict(v judge.Verdict, level Level, text string) Verdict {
 	if v.Answer == judge.Uncertain {
-		return Verdict{Check: v.Gate, Level: Uncertain, P: v.P, Text: fmt.Sprintf("not sure (p=%.2f)", v.P)}
+		return Verdict{Check: v.Gate, Level: Uncertain, P: v.P, Text: fmt.Sprintf("The judge could not decide (best guess %q, p=%.2f).", v.Top, v.P)}
 	}
 	return Verdict{Check: v.Gate, Level: level, P: v.P, Text: text}
 }
@@ -18,7 +18,7 @@ func gateVerdict(v judge.Verdict, level Level, text string) Verdict {
 func finishRedCheck(vs map[string]judge.Verdict) []Verdict {
 	v := vs["red-check"]
 	if v.Answer == "yes" {
-		return []Verdict{gateVerdict(v, OK, "fails for the right reason (assertion)")}
+		return []Verdict{gateVerdict(v, OK, "It fails on its assertion (expected vs actual), so it proves the behaviour is missing.")}
 	}
 	return []Verdict{gateVerdict(v, Warn, "The new test fails for the wrong reason: make it compile and reach its assertion, then watch it fail there.")}
 }
@@ -26,7 +26,7 @@ func finishRedCheck(vs map[string]judge.Verdict) []Verdict {
 func finishOneBehaviour(vs map[string]judge.Verdict) []Verdict {
 	v := vs["one-behaviour"]
 	if v.Answer == "yes" {
-		return []Verdict{gateVerdict(v, OK, "checks one behaviour")}
+		return []Verdict{gateVerdict(v, OK, "The test checks a single behaviour.")}
 	}
 	return []Verdict{gateVerdict(v, Hint, "This test checks more than one behaviour; split it so each test drives one small step.")}
 }
@@ -66,7 +66,7 @@ func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
 	var out []Verdict
 	tpp := vs["tpp"]
 	if tpp.Answer != judge.Uncertain {
-		out = append(out, gateVerdict(tpp, OK, c.tppLabel(tpp.Answer)))
+		out = append(out, gateVerdict(tpp, OK, "Applied "+c.tppLabel(tpp.Answer)+"."))
 	} else {
 		out = append(out, gateVerdict(tpp, OK, ""))
 	}
@@ -75,13 +75,13 @@ func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
 		switch {
 		case size.Answer == judge.Uncertain || tpp.Answer == judge.Uncertain:
 			out = append(out, Verdict{Check: "step-size", Level: Uncertain, P: size.P,
-				Text: fmt.Sprintf("not sure (step-size p=%.2f, tpp p=%.2f)", size.P, tpp.P)})
+				Text: fmt.Sprintf("The judge could not decide (needed: %q p=%.2f, applied: %q p=%.2f).", size.Top, size.P, tpp.Top, tpp.P)})
 		case band[tpp.Answer] > sizeBand[size.Answer]:
 			out = append(out, gateVerdict(size, Hint, fmt.Sprintf(
 				"A simpler change would have done: the test only needed a %s change, the code made a %s one (%s).",
 				size.Answer, bandName[band[tpp.Answer]], c.tppLabel(tpp.Answer))))
 		default:
-			out = append(out, gateVerdict(size, OK, fmt.Sprintf("%s change needed, %s applied", size.Answer, bandName[band[tpp.Answer]])))
+			out = append(out, gateVerdict(size, OK, fmt.Sprintf("The test needed a %s change and the code made a %s one: no bigger than necessary.", size.Answer, bandName[band[tpp.Answer]])))
 		}
 	}
 
@@ -89,14 +89,14 @@ func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
 	if multi.Answer == "yes" {
 		out = append(out, gateVerdict(multi, Hint, "Several transformations in one Green: a test is probably missing in between."))
 	} else {
-		out = append(out, gateVerdict(multi, OK, "one transformation"))
+		out = append(out, gateVerdict(multi, OK, "One transformation, as a single new test should need."))
 	}
 
 	if ch, ok := vs["cheating"]; ok {
 		if ch.Answer == "yes" {
 			out = append(out, gateVerdict(ch, Hint, "The code special-cases the test's inputs: generalise instead of matching test values."))
 		} else {
-			out = append(out, gateVerdict(ch, OK, "no special-casing beyond fake-it"))
+			out = append(out, gateVerdict(ch, OK, "No special-casing of the tests' inputs beyond fake-it."))
 		}
 	}
 	return out
@@ -108,14 +108,17 @@ func finishRefactor(vs map[string]judge.Verdict) []Verdict {
 	if st.Answer == "no" {
 		out = append(out, gateVerdict(st, Warn, "This refactoring seems to change what the code computes; refactorings keep behaviour exactly."))
 	} else {
-		out = append(out, gateVerdict(st, OK, "behaviour preserved"))
+		out = append(out, gateVerdict(st, OK, "Only the structure changed; the code computes the same as before."))
 	}
 	eff := vs["refactor-effect"]
 	switch eff.Answer {
 	case "worsens":
 		out = append(out, gateVerdict(eff, Hint, "This refactoring makes the code harder to read or change."))
 	default:
-		out = append(out, gateVerdict(eff, OK, eff.Answer))
+		out = append(out, gateVerdict(eff, OK, map[string]string{
+			"improves": "The code is easier to read or change afterwards.",
+			"neutral":  "About as readable as before: no clear gain or loss.",
+		}[eff.Answer]))
 	}
 	return out
 }
@@ -156,9 +159,9 @@ func (c *Coach) finishLenses(red steps.Step, green int, ev judge.Evidence, vs ma
 			}})
 		return nil
 	case len(unsure) > 0:
-		return []Verdict{{Check: "missed refactor", Level: Uncertain, Text: "not sure (" + strings.Join(unsure, ", ") + ")"}}
+		return []Verdict{{Check: "missed refactor", Level: Uncertain, Text: "The judge could not decide whether the last Green left something to refactor (" + strings.Join(unsure, ", ") + ")."}}
 	}
-	return []Verdict{{Check: "missed refactor", Level: OK, Text: "nothing worth refactoring after the last Green"}}
+	return []Verdict{{Check: "missed refactor", Level: OK, Text: "Nothing worth refactoring after the last Green."}}
 }
 
 // missedRefactorHint names the problem each firing lens sees most clearly.

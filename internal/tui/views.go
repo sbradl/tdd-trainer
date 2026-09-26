@@ -124,7 +124,7 @@ func (m *Model) cards() []card {
 		}
 		for _, v := range sv.verdicts {
 			if v.Level == coach.Hint || v.Level == coach.Warn {
-				out = append(out, card{v.Level, fmt.Sprintf("step %d · %s · %s", sv.step.N, sv.step.Kind, v.Check), v.Text})
+				out = append(out, card{v.Level, fmt.Sprintf("step %d · %s · %s", sv.step.N, sv.step.Kind, coach.Label(v.Check)), v.Text})
 			}
 		}
 	}
@@ -260,22 +260,22 @@ func (m *Model) dashboardView() string {
 		out = append(out, red.Render("        "+f.ID))
 	}
 	if cur != nil {
-		out = append(out, "", dim.Render(fmt.Sprintf(" %-17s %-6s %s", "GATE", "", "VERDICT")))
+		out = append(out, "", dim.Render(fmt.Sprintf(" %-28s %-6s %s", "CHECK", "", "VERDICT")))
 		for _, v := range cur.verdicts {
 			text := v.Text
 			if v.Level == coach.Uncertain {
 				text = dim.Render(text)
 			}
-			for i, l := range wrap(text, w-28) {
+			for i, l := range wrap(text, w-39) {
 				if i == 0 {
-					out = append(out, fmt.Sprintf(" %-17s %s      %s", v.Check, levelIcon(v.Level), l))
+					out = append(out, fmt.Sprintf(" %-28s %s      %s", coach.Label(v.Check), levelIcon(v.Level), l))
 				} else {
-					out = append(out, fmt.Sprintf(" %-17s        %s", "", l))
+					out = append(out, fmt.Sprintf(" %-28s        %s", "", l))
 				}
 			}
 		}
 		for _, p := range m.pendingFor(cur.step.N) {
-			out = append(out, fmt.Sprintf(" %-17s %s      %s", p.Gate, m.spinner(), dim.Render(fmt.Sprintf("in ~%.0fs", p.ETA.Seconds()))))
+			out = append(out, fmt.Sprintf(" %-28s %s      %s", coach.Label(p.Gate), m.spinner(), dim.Render(fmt.Sprintf("in ~%.0fs", p.ETA.Seconds()))))
 		}
 	}
 	return fit(out, m.footer(), m.height)
