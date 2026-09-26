@@ -20,12 +20,14 @@ type fakeCtl struct {
 	resets    int
 	pending   []coach.PendingGate
 	reports   int
+	nexts     int
 }
 
 func (f *fakeCtl) Override(p steps.Phase)            { f.overrides = append(f.overrides, p) }
 func (f *fakeCtl) ResetBaseline()                    { f.resets++ }
 func (f *fakeCtl) PendingGates() []coach.PendingGate { return f.pending }
 func (f *fakeCtl) WriteReport() (string, error)      { f.reports++; return ".tddtrainer/reports/x.md", nil }
+func (f *fakeCtl) NextTest()                         { f.nexts++ }
 
 func run(tests []string, failing ...string) session.RunDone {
 	st := results.TestState{Tests: tests}
@@ -184,5 +186,49 @@ func TestLongToastWraps(t *testing.T) {
 	m.showToast("Resolved: your refactoring removed magic numbers or strings, and special-case code mixed into general code.")
 	if v := m.View(); !strings.Contains(v, "general") || !strings.Contains(v, "  code. ") {
 		t.Fatalf("toast cut off:\n%s", v)
+	}
+}
+
+func TestNextTestKeyAndCard(t *testing.T) {
+	ctl := &fakeCtl{}
+	m := New(ctl, "")
+	session1(m)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if ctl.nexts != 0 {
+		t.Fatal("controller called inside Update")
+	}
+	cmd()
+	if ctl.nexts != 1 {
+		t.Fatalf("n did not ask: %d", ctl.nexts)
+	}
+
+	m.Update(coach.NextTest{Stage: 1, Pending: true, Text: "Looking at your tests…"})
+	if v := m.View(); !strings.Contains(v, "Next test") || !strings.Contains(v, "Looking at your tests") {
+		t.Errorf("pending card:\n%s", v)
+	}
+	m.Update(coach.NextTest{Stage: 1, Case: "boundary", Text: "Try an edge case."})
+	if v := m.View(); !strings.Contains(v, "Try an edge case.") || !strings.Contains(v, "press n for more") {
+		t.Errorf("stage 1 card:\n%s", v)
+	}
+	m.Update(coach.NextTest{Stage: 2, Case: "boundary", Text: "No test yet at an edge."})
+	if v := m.View(); !strings.Contains(v, "No test yet at an edge.") || strings.Contains(v, "press n for more") {
+		t.Errorf("stage 2 card:\n%s", v)
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if v := m.View(); !strings.Contains(v, "No test yet at an edge.") {
+		t.Errorf("dashboard lacks the hint:\n%s", v)
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyTab})
+
+	// writing the next test clears it
+	m.Update(steps.RedInProgress{BuildBroken: true})
+	if v := m.View(); strings.Contains(v, "Next test") {
+		t.Errorf("hint still shown once a new test is written:\n%s", v)
+	}
+
+	// a message that is no hint is a toast
+	m.Update(coach.NextTest{Text: "Finish the current step first: make the failing test pass."})
+	if v := m.View(); strings.Contains(v, "Next test") || !strings.Contains(v, "Finish the current step first") {
+		t.Errorf("toast:\n%s", v)
 	}
 }

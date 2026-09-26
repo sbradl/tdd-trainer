@@ -6,7 +6,8 @@ package judge
 //
 //	TDDT_LAB=<gate> TDDT_LAB_VARIANTS=<variants.json> go test -count=1 -run TestLab -v ./internal/judge
 //
-// variants.json: [{"name", "question", "clean_question", "options": [{"ID","Desc"}], "parts"}],
+// variants.json: [{"name", "question", "clean_question", "clean_options", "no_clean",
+// "options": [{"ID","Desc"}], "parts"}],
 // every field but name optional.
 
 import (
@@ -24,6 +25,8 @@ type labVariant struct {
 	Options  []Option `json:"options"`
 	Parts    []Part   `json:"parts"`
 	Clean    string   `json:"clean_question"`
+	CleanOpt []Option `json:"clean_options"`
+	NoClean  bool     `json:"no_clean"`
 }
 
 func TestLab(t *testing.T) {
@@ -56,10 +59,18 @@ func TestLab(t *testing.T) {
 		if v.Parts != nil {
 			g.Parts = v.Parts
 		}
-		if v.Clean != "" {
+		if v.Clean != "" || v.CleanOpt != nil {
 			c := *g.Clean
-			c.Question = v.Clean
+			if v.Clean != "" {
+				c.Question = v.Clean
+			}
+			if v.CleanOpt != nil {
+				c.Options = v.CleanOpt
+			}
 			g.Clean = &c
+		}
+		if v.NoClean {
+			g.Clean = nil
 		}
 		variants = append(variants, g)
 		names = append(names, v.Name)

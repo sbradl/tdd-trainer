@@ -1,0 +1,7 @@
+local calculator = require("calculator")
+
+describe("add", function()
+  it("returns 0 for an empty string", function()
+    assert.are.equal(0, calculator.add(""))
+  end)
+end)

@@ -1,0 +1,19 @@
+using Xunit;
+
+public class StackTests
+{
+    [Fact]
+    public void NewStackIsEmpty()
+    {
+        var stack = new Stack();
+        Assert.True(stack.IsEmpty);
+    }
+
+    [Fact]
+    public void PopReturnsThePushedItem()
+    {
+        var stack = new Stack();
+        stack.Push(5);
+        Assert.Equal(5, stack.Pop());
+    }
+}

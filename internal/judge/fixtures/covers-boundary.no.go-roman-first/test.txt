@@ -1,0 +1,9 @@
+package roman
+
+import "testing"
+
+func TestOneIsI(t *testing.T) {
+	if got := Roman(1); got != "I" {
+		t.Fatalf("Roman(1) = %q, want %q", got, "I")
+	}
+}

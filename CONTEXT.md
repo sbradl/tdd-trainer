@@ -51,6 +51,10 @@ _Avoid_: Refactoring (a transformation changes behaviour, a refactoring does not
 **Missed refactor**:
 A Green step followed directly by a new Red step although the code had something worth refactoring.
 
+**Next-test hint**:
+On request, the kind of test to write next: the first case of the ZOMBIES checklist (zero/empty, one, many, boundaries, errors) that no test covers yet, or triangulating after a fake-it Green. Revealed in stages: first the kind, then the case.
+_Avoid_: Suggestion (that is #15's generated concrete test)
+
 ### Judging
 
 **Judge**:

@@ -1,0 +1,31 @@
+package roman
+
+import "testing"
+
+func TestRoman(t *testing.T) {
+	cases := []struct {
+		n    int
+		want string
+	}{
+		{1, "I"}, {3, "III"}, {4, "IV"}, {5, "V"}, {9, "IX"}, {10, "X"},
+		{14, "XIV"}, {40, "XL"}, {90, "XC"}, {400, "CD"}, {1994, "MCMXCIV"}, {3999, "MMMCMXCIX"},
+	}
+	for _, c := range cases {
+		got, err := Roman(c.n)
+		if err != nil || got != c.want {
+			t.Errorf("Roman(%d) = %q, %v; want %q", c.n, got, err, c.want)
+		}
+	}
+}
+
+func TestZeroHasNoRomanNumeral(t *testing.T) {
+	if _, err := Roman(0); err == nil {
+		t.Fatal("Roman(0): want an error")
+	}
+}
+
+func TestAbove3999IsRejected(t *testing.T) {
+	if _, err := Roman(4000); err == nil {
+		t.Fatal("Roman(4000): want an error")
+	}
+}

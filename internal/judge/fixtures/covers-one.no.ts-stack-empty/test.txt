@@ -1,0 +1,6 @@
+import { expect, test } from "vitest";
+import { Stack } from "./stack";
+
+test("a new stack is empty", () => {
+  expect(new Stack().isEmpty()).toBe(true);
+});

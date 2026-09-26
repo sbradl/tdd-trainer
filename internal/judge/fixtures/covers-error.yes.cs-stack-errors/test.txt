@@ -1,0 +1,37 @@
+using System;
+using Xunit;
+
+public class StackTests
+{
+    [Fact]
+    public void NewStackIsEmpty()
+    {
+        Assert.True(new Stack().IsEmpty);
+    }
+
+    [Fact]
+    public void PopReturnsThePushedItem()
+    {
+        var stack = new Stack();
+        stack.Push(5);
+        Assert.Equal(5, stack.Pop());
+    }
+
+    [Fact]
+    public void PopsInReverseOrderOfPushes()
+    {
+        var stack = new Stack();
+        stack.Push(1);
+        stack.Push(2);
+        stack.Push(3);
+        Assert.Equal(3, stack.Pop());
+        Assert.Equal(2, stack.Pop());
+        Assert.Equal(1, stack.Pop());
+    }
+
+    [Fact]
+    public void PoppingAnEmptyStackThrows()
+    {
+        Assert.Throws<InvalidOperationException>(() => new Stack().Pop());
+    }
+}

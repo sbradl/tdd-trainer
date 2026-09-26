@@ -38,6 +38,8 @@ type Verdict struct {
 	Text  string
 	P     float64 // judge probability; 0 for exact checks
 	Exact bool
+	// Answer is the judge's confident option ID, e.g. "constant" for tpp.
+	Answer string `json:",omitempty"`
 }
 
 // Store is the part of the snapshot store the coach reads.
@@ -65,6 +67,11 @@ type Coach struct {
 	seq     int
 	lastRed *redEvidence
 	issue   *refactorIssue // what the last Green's review found
+	next    *nextState     // coverage of the current tests, for next-test hints
+	onNext  func(NextTest)
+
+	lastN    int // the newest step, for pending gates not tied to one
+	lastKind steps.Kind
 }
 
 type redEvidence struct {
@@ -130,6 +137,7 @@ const (
 	prioGreen
 	prioRefactor
 	prioLenses
+	prioNext // next-test coverage: only matters once the learner asks
 )
 
 type job struct {
@@ -241,6 +249,9 @@ func (c *Coach) Run(ctx context.Context) {
 // Step handles a completed step: exact verdicts are emitted before it
 // returns, judge gates are queued.
 func (c *Coach) Step(s steps.Step) error {
+	c.mu.Lock()
+	c.lastN, c.lastKind = s.N, s.Kind
+	c.mu.Unlock()
 	var diffs []snapshot.FileDiff
 	if s.From != s.To {
 		var err error
@@ -289,6 +300,7 @@ func (c *Coach) Step(s steps.Step) error {
 			c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
 		}
 		c.redStarted(s)
+		c.dropNext()
 
 	case steps.Green:
 		c.mu.Lock()
@@ -308,6 +320,10 @@ func (c *Coach) Step(s steps.Step) error {
 			gates = append(gates, "cheating", "step-size")
 		}
 		c.enqueue(&job{prio: prioGreen, step: s.N, kind: s.Kind, ev: ev, gates: gates, finish: c.finishGreen})
+		// judge the coverage now, so that "what next?" answers at once
+		if _, err := c.prepareNext(s.To); err != nil {
+			return err
+		}
 
 	case steps.Refactor:
 		exact("stayed green", OK, "All tests kept passing during the refactoring.")
@@ -332,26 +348,31 @@ var anomalyText = map[steps.Anomaly]string{
 	steps.BrokeExistingTest: "A test that passed before is failing now: undo the last change or get back to green first.",
 }
 
-// filesText joins the snapshot's files of one kind, with a header per
-// file when there are several.
+// filesText joins the snapshot's files of one kind.
 func (c *Coach) filesText(id snapshot.ID, kind config.FileKind) (string, error) {
 	files, err := c.store.Files(id, kind)
 	if err != nil {
 		return "", err
 	}
+	return JoinFiles(files), nil
+}
+
+// JoinFiles joins files as the judge sees them: sorted by name, with a
+// header per file when there are several.
+func JoinFiles(files map[string]string) string {
 	names := make([]string, 0, len(files))
 	for n := range files {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 	if len(names) == 1 {
-		return files[names[0]], nil
+		return files[names[0]]
 	}
 	var b strings.Builder
 	for _, n := range names {
 		fmt.Fprintf(&b, "--- %s\n%s\n", n, files[n])
 	}
-	return b.String(), nil
+	return b.String()
 }
 
 // split joins the patches by kind and counts added test lines.

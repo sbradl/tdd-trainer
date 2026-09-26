@@ -101,9 +101,9 @@ func (m *Model) footer() []string {
 			out = append(out, " "+inverse.Render(" "+l+" "))
 		}
 	}
-	keys := "Tab dashboard · r/g/f set phase · b baseline · w report · q quit"
+	keys := "Tab dashboard · n next test · r/g/f set phase · b baseline · w report · q quit"
 	if m.view == dashboard {
-		keys = "Tab quiet view · r red  g green  f refactor · b reset baseline · w report · q quit"
+		keys = "Tab quiet view · n next test · r red  g green  f refactor · b reset baseline · w report · q quit"
 	}
 	out = append(out, dim.Render(" "+keys+"  ·  "+m.judge))
 	return out
@@ -113,12 +113,13 @@ type card struct {
 	level coach.Level
 	title string
 	text  string
+	guide bool // a next-test hint the learner asked for
 }
 
 func (m *Model) cards() []card {
 	var out []card
 	if m.startsRed {
-		out = append(out, card{coach.Warn, "baseline", "The session starts with failing tests; it is treated as Red in progress. Get to green, or press b once you are."})
+		out = append(out, card{coach.Warn, "baseline", "The session starts with failing tests; it is treated as Red in progress. Get to green, or press b once you are.", false})
 	}
 	for _, sv := range m.steps {
 		if sv.cycle < m.cycle {
@@ -126,7 +127,7 @@ func (m *Model) cards() []card {
 		}
 		for _, v := range sv.verdicts {
 			if v.Level == coach.Hint || v.Level == coach.Warn {
-				out = append(out, card{v.Level, fmt.Sprintf("step %d · %s · %s", sv.step.N, sv.step.Kind, coach.Label(v.Check)), v.Text})
+				out = append(out, card{v.Level, fmt.Sprintf("step %d · %s · %s", sv.step.N, sv.step.Kind, coach.Label(v.Check)), v.Text, false})
 			}
 		}
 	}
@@ -135,9 +136,27 @@ func (m *Model) cards() []card {
 		if !r.BuildBroken {
 			text = "The new test errors before its assertion. Make it reach the assertion and fail there."
 		}
-		out = append(out, card{coach.Hint, "Red in progress", text})
+		out = append(out, card{coach.Hint, "Red in progress", text, false})
+	}
+	if c, ok := m.nextCard(); ok {
+		out = append(out, c)
 	}
 	return out
+}
+
+func (m *Model) nextCard() (card, bool) {
+	n := m.next
+	if n == nil {
+		return card{}, false
+	}
+	title := "Next test"
+	switch {
+	case n.Pending:
+		title += " " + m.spinner()
+	case n.Stage == 1:
+		title += dim.Render(" · press n for more")
+	}
+	return card{coach.OK, title, n.Text, true}, true
 }
 
 func (m *Model) summaries() []string {
@@ -196,7 +215,10 @@ func (m *Model) quietView() string {
 	cards := m.cards()
 	for _, c := range cards {
 		col := yellow
-		if c.level == coach.Warn {
+		switch {
+		case c.guide:
+			col = blue
+		case c.level == coach.Warn:
 			col = magenta
 		}
 		out = append(out, " "+col.Render("┌ ")+bold.Render(c.title))
@@ -278,6 +300,12 @@ func (m *Model) dashboardView() string {
 		}
 		for _, p := range m.pendingFor(cur.step.N) {
 			out = append(out, fmt.Sprintf(" %-28s %s      %s", coach.Label(p.Gate), m.spinner(), dim.Render(fmt.Sprintf("in ~%.0fs", p.ETA.Seconds()))))
+		}
+	}
+	if c, ok := m.nextCard(); ok {
+		out = append(out, "", " "+blue.Render(bold.Render(c.title)))
+		for _, l := range wrap(c.text, w-4) {
+			out = append(out, " "+blue.Render("│")+" "+l)
 		}
 	}
 	return fit(out, m.footer(), m.height)

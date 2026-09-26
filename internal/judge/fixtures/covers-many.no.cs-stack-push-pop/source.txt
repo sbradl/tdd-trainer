@@ -1,0 +1,10 @@
+public class Stack
+{
+    private int? item;
+
+    public bool IsEmpty => item == null;
+
+    public void Push(int value) => item = value;
+
+    public int Pop() => item.Value;
+}

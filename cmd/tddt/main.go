@@ -37,6 +37,7 @@ const usage = `usage:
   tddt init [--preset NAME] [--yes] [dir]  write .tddtrainer.yml
   tddt setup [--model-file F] [--lib-dir D] download the judge's libraries and model
   tddt show STEP [dir]                     print a step of the last session with its full diff
+  tddt next [--cpu] [dir]                  which test to write next, for the code as it is now
   tddt judge --regress [--cpu] [--gate G]  check the judge against its fixtures
 `
 
@@ -58,6 +59,9 @@ func run(args []string, in io.Reader, out io.Writer) error {
 	}
 	if len(args) > 0 && args[0] == "show" {
 		return cmdShow(args[1:], out)
+	}
+	if len(args) > 0 && args[0] == "next" {
+		return cmdNext(args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "judge" {
 		return cmdJudge(args[1:], out)
@@ -416,6 +420,77 @@ func cmdShow(args []string, out io.Writer) error {
 		return err
 	}
 	return report.Show(out, h, n, store)
+}
+
+func cmdNext(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("tddt next", flag.ContinueOnError)
+	fs.Usage = func() { fmt.Fprint(fs.Output(), usage) }
+	cpu := fs.Bool("cpu", false, "do not use the GPU for the judge")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	dir, err := dirArg(fs)
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(dir)
+	if err != nil {
+		return err
+	}
+	store, err := snapshot.Open(dir, cfg)
+	if err != nil {
+		return err
+	}
+	id, err := store.Snapshot("tddt next")
+	if err != nil {
+		return err
+	}
+	tests, err := joinFiles(store, id, config.Test)
+	if err != nil {
+		return err
+	}
+	source, err := joinFiles(store, id, config.Source)
+	if err != nil {
+		return err
+	}
+	// the last Green of the last session says whether to triangulate
+	var green []coach.Verdict
+	if h, _, err := app.LoadLatestSession(dir); err == nil {
+		for _, r := range h.Steps {
+			if r.Step.Kind == steps.Green {
+				green = r.Verdicts
+			}
+		}
+	}
+	lib, model := judge.DefaultLibDir(), judge.DefaultModel()
+	for _, p := range []string{lib, model} {
+		if _, err := os.Stat(p); err != nil {
+			return fmt.Errorf("the judge is not installed (%s missing); run tddt setup", p)
+		}
+	}
+	e, err := judge.OpenEngine(judge.EngineOptions{LibDir: lib, Model: model, CPU: *cpu})
+	if err != nil {
+		return err
+	}
+	defer e.Close()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	n, err := coach.NextTestNow(ctx, e, tests, source, green, cfg.TPPOrder)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(out, n.Text)
+	return nil
+}
+
+// joinFiles joins a snapshot's files of one kind as the coach shows them
+// to the judge.
+func joinFiles(store *snapshot.Store, id snapshot.ID, kind config.FileKind) (string, error) {
+	files, err := store.Files(id, kind)
+	if err != nil {
+		return "", err
+	}
+	return coach.JoinFiles(files), nil
 }
 
 func cmdInit(args []string, in io.Reader, out io.Writer) error {

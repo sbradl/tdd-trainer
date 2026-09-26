@@ -1,0 +1,16 @@
+import pytest
+
+from calculator import add
+
+
+def test_empty_string_is_zero():
+    assert add("") == 0
+
+
+def test_numbers_are_summed():
+    assert add("1,2") == 3
+
+
+def test_negative_numbers_are_rejected():
+    with pytest.raises(ValueError, match="negatives not allowed: -1"):
+        add("-1,2")

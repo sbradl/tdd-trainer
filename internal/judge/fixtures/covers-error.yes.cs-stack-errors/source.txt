@@ -1,0 +1,19 @@
+using System;
+using System.Collections.Generic;
+
+public class Stack
+{
+    private readonly List<int> items = new();
+
+    public bool IsEmpty => items.Count == 0;
+
+    public void Push(int value) => items.Add(value);
+
+    public int Pop()
+    {
+        if (IsEmpty) throw new InvalidOperationException("stack is empty");
+        var top = items[^1];
+        items.RemoveAt(items.Count - 1);
+        return top;
+    }
+}

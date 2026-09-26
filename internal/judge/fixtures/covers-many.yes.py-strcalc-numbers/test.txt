@@ -1,0 +1,13 @@
+from calculator import add
+
+
+def test_single_number_is_its_value():
+    assert add("1") == 1
+
+
+def test_two_numbers_are_summed():
+    assert add("1,2") == 3
+
+
+def test_any_amount_of_numbers_is_summed():
+    assert add("1,2,3,4") == 10

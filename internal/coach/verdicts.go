@@ -11,7 +11,7 @@ func gateVerdict(v judge.Verdict, level Level, text string) Verdict {
 	if v.Answer == judge.Uncertain {
 		return Verdict{Check: v.Gate, Level: Uncertain, P: v.P, Text: fmt.Sprintf("The judge could not decide (best guess %q, p=%.2f).", v.Top, v.P)}
 	}
-	return Verdict{Check: v.Gate, Level: level, P: v.P, Text: text}
+	return Verdict{Check: v.Gate, Level: level, P: v.P, Text: text, Answer: v.Answer}
 }
 
 func finishRedCheck(vs map[string]judge.Verdict) []Verdict {
@@ -42,7 +42,10 @@ var bandName = []string{"constant", "simple", "complex"}
 // sizeBand maps a step-size answer to its band.
 var sizeBand = map[string]int{"constant": 0, "simple": 1, "complex": 2}
 
-func (c *Coach) tppLabel(id string) string {
+func (c *Coach) tppLabel(id string) string { return tppLabel(c.order, id) }
+
+// tppLabel names a transformation with its place in the tpp_order.
+func tppLabel(order, id string) string {
 	pos, name := 0, id
 	for i, o := range judge.TPPOptions {
 		if o.ID == id {
@@ -50,7 +53,7 @@ func (c *Coach) tppLabel(id string) string {
 			name, _, _ = strings.Cut(o.Desc, ":")
 		}
 	}
-	if c.order == "recursion-first" {
+	if order == "recursion-first" {
 		switch id {
 		case "iteration":
 			pos = 7

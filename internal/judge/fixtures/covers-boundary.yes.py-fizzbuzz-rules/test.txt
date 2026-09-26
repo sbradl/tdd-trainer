@@ -1,0 +1,23 @@
+import pytest
+
+from fizzbuzz import fizzbuzz
+
+
+@pytest.mark.parametrize("n, expected", [(1, "1"), (2, "2"), (4, "4")])
+def test_other_numbers_say_themselves(n, expected):
+    assert fizzbuzz(n) == expected
+
+
+@pytest.mark.parametrize("n", [3, 6, 9])
+def test_multiples_of_three_say_fizz(n):
+    assert fizzbuzz(n) == "Fizz"
+
+
+@pytest.mark.parametrize("n", [5, 10, 20])
+def test_multiples_of_five_say_buzz(n):
+    assert fizzbuzz(n) == "Buzz"
+
+
+@pytest.mark.parametrize("n", [15, 30, 45])
+def test_multiples_of_both_say_fizzbuzz(n):
+    assert fizzbuzz(n) == "FizzBuzz"

@@ -140,6 +140,27 @@ var LensProblems = map[string][]Option{
 	},
 }
 
+// Case is one kind of test input from the ZOMBIES checklist.
+type Case struct{ ID, Desc string }
+
+// Cases are the ZOMBIES cases a next-test hint looks for, in the order a
+// learner usually covers them. Interface and Simple are left out: they are
+// about design, not about which input to test next. Each has a
+// "covers-<id>" gate.
+var Cases = []Case{
+	{"zero", "zero or empty: the degenerate input, such as 0, an empty string, an empty list, nothing or none"},
+	{"one", "one: a test that uses a single element or the smallest non-empty input (one number, one item, one word, one element added), not an empty or zero input"},
+	{"many", "many: several items, or a value that needs repetition or combining, such as a list with several items, several words, or a number built from several parts"},
+	{"boundary", "boundaries: inputs at an edge where the result switches from one rule to another, such as just below, at and just above a limit, or a special rule that takes over (a spare, a subtractive numeral, a multiple of both)"},
+	{"error", "errors: invalid input or a failure the code must reject or report, such as a negative number, malformed text, an out-of-range value, or an operation on an empty collection"},
+}
+
+var coverOptions = []Option{
+	{"yes", "Yes: at least one test checks this case."},
+	{"no", "No: this case makes sense for the problem the tests describe, and no test checks it yet."},
+	{"na", "Not applicable: this case makes no sense for this problem."},
+}
+
 // Gates holds every gate by name. Any change to a question or option must
 // be checked with `tddt judge --regress`.
 var Gates = map[string]Gate{}
@@ -176,6 +197,20 @@ func init() {
 		add(Gate{Name: name, Options: yesNo, Parts: []Part{PartDiff}, Clean: &clean,
 			Question: fmt.Sprintf("Does this source diff contain at least one of these problems? Lens: %s. Answer yes if any added code shows one of them, even a small instance.", focus)})
 	}
+	// "no" (a gap) turns into a hint, so it needs both probes.
+	for _, c := range Cases {
+		clean := Gate{Name: "covers-" + c.ID + "~clean", Options: yesNo, Parts: []Part{PartTest, PartSource}, Floor: floor,
+			Question: fmt.Sprintf("Case: %s. Is there a test that checks this case?", c.Desc)}
+		add(Gate{Name: "covers-" + c.ID, Options: coverOptions, Parts: []Part{PartTest, PartSource}, Clean: &clean,
+			Question: fmt.Sprintf("Look at the tests and the code under test. Case: %s. Does at least one test check this case?", c.Desc)})
+	}
+}
+
+// NextTPPGate asks which transformation the simplest code for a new test
+// of one case would apply. Evaluate it with Judge.EvaluateGates.
+func NextTPPGate(c Case) Gate {
+	return Gate{Name: "next-tpp", Options: TPPOptions, Parts: []Part{PartTest, PartSource}, Floor: 0.5,
+		Question: fmt.Sprintf("A new test for this case is added next. Case: %s. Which Transformation Priority Premise transformation would the simplest change to the current source apply to make it pass?", c.Desc)}
 }
 
 // LensNames returns the review lens gate names, sorted.

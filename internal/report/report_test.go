@@ -75,6 +75,30 @@ func TestReportSections(t *testing.T) {
 	}
 }
 
+func TestReportCountsNextTestHints(t *testing.T) {
+	h := history()
+	h.NextTests = []app.NextTestRecord{
+		{Step: 2, Stage: 1, Case: "boundary"}, {Step: 2, Stage: 2, Case: "boundary"},
+		{Step: 4, Stage: 1, Case: "triangulate"}, {Step: 6, Stage: 1, Case: "complete"},
+	}
+	r := Render(h, 0, nil)
+	for _, want := range []string{
+		"**Next test** (4×): You asked which test to write next, mostly: boundaries (2×).",
+		"## Next-test hints", "- After step 2 (cycle 1): boundaries, stage 2", "- After step 4 (cycle 2): triangulate, stage 1",
+	} {
+		if !strings.Contains(r, want) {
+			t.Errorf("missing %q in:\n%s", want, r)
+		}
+	}
+	// asking for a hint does not make a cycle unclean
+	if !strings.Contains(r, "| 1 of 3 (33%) |") {
+		t.Errorf("clean cycles changed:\n%s", r)
+	}
+	if strings.Contains(Render(history(), 0, nil), "Next-test hints") {
+		t.Error("section without hints")
+	}
+}
+
 func TestEmptyReport(t *testing.T) {
 	r := Render(app.History{Start: time.Now(), End: time.Now()}, 0, nil)
 	for _, want := range []string{"No steps yet.", "Nothing stood out", "No transformations judged.", "None."} {

@@ -1,0 +1,7 @@
+local M = {}
+
+function M.add(numbers)
+  return 0
+end
+
+return M

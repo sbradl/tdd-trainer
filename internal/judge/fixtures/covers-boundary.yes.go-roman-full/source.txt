@@ -1,0 +1,30 @@
+package roman
+
+import (
+	"errors"
+	"strings"
+)
+
+var numerals = []struct {
+	value  int
+	symbol string
+}{
+	{1000, "M"}, {900, "CM"}, {500, "D"}, {400, "CD"}, {100, "C"}, {90, "XC"},
+	{50, "L"}, {40, "XL"}, {10, "X"}, {9, "IX"}, {5, "V"}, {4, "IV"}, {1, "I"},
+}
+
+var ErrOutOfRange = errors.New("roman numerals cover 1 to 3999")
+
+func Roman(n int) (string, error) {
+	if n < 1 || n > 3999 {
+		return "", ErrOutOfRange
+	}
+	var b strings.Builder
+	for _, num := range numerals {
+		for n >= num.value {
+			b.WriteString(num.symbol)
+			n -= num.value
+		}
+	}
+	return b.String(), nil
+}

@@ -1,0 +1,8 @@
+def add(numbers):
+    if not numbers:
+        return 0
+    values = [int(n) for n in numbers.split(",")]
+    negatives = [v for v in values if v < 0]
+    if negatives:
+        raise ValueError("negatives not allowed: " + ", ".join(map(str, negatives)))
+    return sum(values)

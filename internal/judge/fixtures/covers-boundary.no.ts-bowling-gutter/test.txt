@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { Game } from "./game";
+
+describe("bowling", () => {
+  it("scores a gutter game as zero", () => {
+    const game = new Game();
+    for (let i = 0; i < 20; i++) game.roll(0);
+    expect(game.score()).toBe(0);
+  });
+});

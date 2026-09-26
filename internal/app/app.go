@@ -50,6 +50,14 @@ type History struct {
 	Steps        []StepRecord
 	StartsRed    bool
 	ExitCodeOnly bool
+	NextTests    []NextTestRecord `json:",omitempty"`
+}
+
+// NextTestRecord is a next-test hint the learner asked for.
+type NextTestRecord struct {
+	Step  int // the newest step when asked
+	Stage int
+	Case  string
 }
 
 // SessionsDir holds one JSON file per session, for `tddt show`.
@@ -129,6 +137,7 @@ func New(dir string, cfg config.Config, jd *judge.Lazy, sink func(any)) (*App, e
 		scorer = jd
 	}
 	a.coach = coach.New(store, scorer, cfg.TPPOrder, a.verdict)
+	a.coach.SetNextTestSink(a.nextTest)
 	return a, nil
 }
 
@@ -151,6 +160,7 @@ func (a *App) History() History {
 	defer a.mu.Unlock()
 	h := a.hist
 	h.End = time.Now()
+	h.NextTests = append([]NextTestRecord{}, a.hist.NextTests...)
 	h.Steps = make([]StepRecord, len(a.hist.Steps))
 	for i, r := range a.hist.Steps {
 		h.Steps[i] = StepRecord{Step: r.Step, Verdicts: append([]coach.Verdict{}, r.Verdicts...)}
@@ -281,6 +291,41 @@ func (a *App) verdict(v coach.Verdict) {
 	if !v.Exact {
 		a.save() // exact verdicts are saved with their step
 	}
+}
+
+// NextTest asks for a hint on which test to write next (hotkey n); the
+// hint arrives as a coach.NextTest message.
+func (a *App) NextTest() {
+	a.mu.Lock()
+	now, phase := a.prev, a.machine.Phase()
+	var green []coach.Verdict
+	for _, r := range a.hist.Steps {
+		if r.Step.Kind == steps.Green {
+			green = append([]coach.Verdict{}, r.Verdicts...)
+		}
+	}
+	a.mu.Unlock()
+	if now == "" {
+		a.sink(coach.NextTest{Text: "Wait for the first test run."})
+		return
+	}
+	if err := a.coach.NextTest(now, phase, green); err != nil {
+		a.sink(ErrorMsg{err})
+	}
+}
+
+func (a *App) nextTest(n coach.NextTest) {
+	if n.Stage > 0 && !n.Pending {
+		a.mu.Lock()
+		last := 0
+		if len(a.hist.Steps) > 0 {
+			last = a.hist.Steps[len(a.hist.Steps)-1].Step.N
+		}
+		a.hist.NextTests = append(a.hist.NextTests, NextTestRecord{Step: last, Stage: n.Stage, Case: n.Case})
+		a.mu.Unlock()
+		defer a.save()
+	}
+	a.sink(n)
 }
 
 // Override sets the phase by hand (hotkeys r/g/f).

@@ -21,6 +21,12 @@ var checks = map[string]checkInfo{
 	"missed refactor":      {"Refactor after Green", "After a Green, the code is reviewed for things worth cleaning up before the next test."},
 	"anomaly":              {"Cycle rhythm", "Steps that break the Red → Green → Refactor rhythm."},
 	"judge":                {"Judge", "The local model that answers the checks the exact rules cannot decide."},
+	"covers-zero":          {"Next test: zero/empty", "Whether a test covers the degenerate case, for next-test hints."},
+	"covers-one":           {"Next test: one", "Whether a test covers a single element, for next-test hints."},
+	"covers-many":          {"Next test: many", "Whether a test covers several elements, for next-test hints."},
+	"covers-boundary":      {"Next test: boundaries", "Whether a test covers an edge where the rules switch, for next-test hints."},
+	"covers-error":         {"Next test: errors", "Whether a test covers invalid input or a failure, for next-test hints."},
+	"next-tpp":             {"Next test: transformation", "The transformation the next test probably needs, for next-test hints."},
 }
 
 // Label is the human name of a check or judge gate.

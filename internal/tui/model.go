@@ -22,6 +22,8 @@ type Controller interface {
 	PendingGates() []coach.PendingGate
 	// WriteReport writes the session report now and returns its path.
 	WriteReport() (string, error)
+	// NextTest asks for a next-test hint; it arrives as a coach.NextTest.
+	NextTest()
 }
 
 type view int
@@ -61,6 +63,7 @@ type Model struct {
 	okCount int
 	pending []coach.PendingGate
 	judge   string
+	next    *coach.NextTest // the last next-test hint, until a new test is written
 
 	toast      string
 	toastUntil time.Time
@@ -110,10 +113,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.startsRed = msg.StartsRed
 	case steps.RedInProgress:
 		m.redInProgress = &msg
+		m.next = nil
 	case steps.PhaseChanged:
 		m.showToast("phase set by hand → " + phaseName(msg.Phase))
 	case steps.StepDone:
 		if msg.Step.Kind == steps.Red {
+			m.next = nil
 			m.cycle++
 			m.redInProgress = nil
 			m.startsRed = false
@@ -133,6 +138,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.Level == coach.OK {
 			m.okCount++
+		}
+	case coach.NextTest:
+		if msg.Stage == 0 {
+			m.showToast(msg.Text) // not a hint: wrong phase, or no judge
+		} else {
+			m.next = &msg
 		}
 	case app.PhaseMsg:
 		m.phase = msg.Phase
@@ -179,6 +190,8 @@ func (m *Model) key(k tea.KeyMsg) tea.Cmd {
 	case "b":
 		m.showToast("baseline reset: the next test run is the new starting point")
 		return m.do(m.ctl.ResetBaseline)
+	case "n":
+		return m.do(m.ctl.NextTest)
 	case "w":
 		return func() tea.Msg {
 			p, err := m.ctl.WriteReport()

@@ -114,7 +114,9 @@ Each green save while you refactor re-checks it. A cosmetic change gets "Still t
 
 ![The dashboard with the current step's checks](docs/screenshots/dashboard.svg)
 
-**6. Quit with `q`.** `tddt` writes the report and prints a summary.
+**6. Stuck on the next test? Press `n`.** While the tests are green, `tddt` suggests which kind of test to write next. Press once for the kind ("Try an edge case."), press again for the case ("No test yet at an edge where the result switches from one rule to another …"). The coverage is judged right after each Green, so the answer is usually there at once. If your last Green faked the result with a constant, it tells you to triangulate first. The hint goes away once you write the next test.
+
+**7. Quit with `q`.** `tddt` writes the report and prints a summary.
 
 ### Without a terminal UI
 
@@ -204,6 +206,7 @@ Exact rules come first. The judge only answers what they can't decide.
 | Refactor | **Design effect** | The code got easier to read or change (or not). | judge |
 | After Green | **Refactor now** | The new code is reviewed through five lenses (code smells, Clean Code, domain design, Pragmatic Programmer, module design). If something is worth cleaning up, the hint names it, and it is re-checked on every green save until resolved. | judge |
 | Next Red | **Refactor after Green** | Did you start the next test with a *Refactor now* problem still unresolved? | from the re-checks |
+| On request | **Next test** | Which kind of test to write next: the first case of the ZOMBIES checklist (zero/empty, one, many, boundaries, errors) that no test covers yet, or "triangulate" right after a fake-it Green. Only asked for with `n` or `tddt next`; it never counts against a cycle. | judge |
 | any | **Cycle rhythm** | Several new tests at once; a test that passes without failing first; code written without a failing test; a test edited during Green; an existing test breaking. | exact |
 
 Every verdict is advisory. The judge answers only when it is at least 80% sure (45% for "simplest change"). Anything less is marked **uncertain**: it is not shown during the session and is listed in the report.
@@ -212,7 +215,7 @@ Every verdict is advisory. The judge answers only when it is at least 80% sure (
 
 When you quit (or press `w`), `tddt` writes `.tddtrainer/reports/<start time>.md`. It contains:
 - the session's numbers;
-- the three hints that came up most often, as focus tips;
+- the three hints that came up most often, as focus tips, plus how often you asked for the next test;
 - a table per cycle with every verdict;
 - diffs for the steps that got a hint;
 - your transformation path;
@@ -245,6 +248,7 @@ tddt [--once] [--no-judge] [--cpu] [dir]   watch and coach the project in dir (d
 tddt init [--preset NAME] [--yes] [dir]    write .tddtrainer.yml (detects the project type)
 tddt setup [--model-file F] [--lib-dir D]  install the judge's libraries and model
 tddt show STEP [dir]                       a step of the last session: verdicts and full diff
+tddt next [--cpu] [dir]                    which test to write next, for the code as it is now
 tddt judge --regress [--cpu] [--gate G]    check the judge against its labelled fixtures
 ```
 
@@ -259,6 +263,7 @@ tddt judge --regress [--cpu] [--gate G]    check the judge against its labelled 
 | g | "I'm making it pass": sets the phase to Green |
 | f | "I'm refactoring": sets the phase to Refactor |
 | b | reset the baseline: the next test run is the new starting point |
+| n | which test to write next; press again for more detail |
 | w | write the report now |
 | q, Ctrl-C | quit (writes the report) |
 
@@ -304,7 +309,7 @@ flowchart LR
 - **Watching:** file changes are debounced. A new save cancels a test run still in progress, including its child processes.
 - **Steps:** a step is everything between two changes of the test state. New tests are found by comparing the test IDs of consecutive runs, so no parser for your language is needed.
 - **Judge:** it follows [SemIf](https://github.com/TheoLeeCJ/SemIf)'s direct mode. Each check is a multiple-choice question. One forward pass of the model gives the probability of each answer letter, and no text is generated. The model stays loaded, and checks that share the same evidence reuse the computed prompt prefix.
-- **Regression suite:** the questions are tuned against labelled fixtures in six languages. Run `tddt judge --regress` to see how the judge does on your machine: 92 of 101 fixtures are answered confidently and correctly, and none confidently wrong, on both CPU and GPU.
+- **Regression suite:** the questions are tuned against labelled fixtures in six languages. Run `tddt judge --regress` to see how the judge does on your machine: 117 of 130 fixtures are answered confidently and correctly, and none confidently wrong, on both CPU and GPU.
 
 ## Changes
 

@@ -1,0 +1,5 @@
+defmodule WordCount do
+  def count(sentence) do
+    %{sentence => 1}
+  end
+end

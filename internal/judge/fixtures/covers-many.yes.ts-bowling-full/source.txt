@@ -1,0 +1,25 @@
+export class Game {
+  private rolls: number[] = [];
+
+  roll(pins: number): void {
+    this.rolls.push(pins);
+  }
+
+  score(): number {
+    let score = 0;
+    let i = 0;
+    for (let frame = 0; frame < 10; frame++) {
+      if (this.rolls[i] === 10) {
+        score += 10 + this.rolls[i + 1] + this.rolls[i + 2];
+        i += 1;
+      } else if (this.rolls[i] + this.rolls[i + 1] === 10) {
+        score += 10 + this.rolls[i + 2];
+        i += 2;
+      } else {
+        score += this.rolls[i] + this.rolls[i + 1];
+        i += 2;
+      }
+    }
+    return score;
+  }
+}

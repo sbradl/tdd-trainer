@@ -145,6 +145,29 @@ func tips(h app.History) []tip {
 	return out
 }
 
+// nextTestTip sums up the next-test hints the learner asked for; "" if none.
+func nextTestTip(h app.History) string {
+	if len(h.NextTests) == 0 {
+		return ""
+	}
+	n := map[string]int{}
+	top := ""
+	for _, r := range h.NextTests {
+		if r.Case == coach.Complete || r.Case == "" {
+			continue // no gap found: nothing to practise
+		}
+		n[r.Case]++
+		if top == "" || n[r.Case] > n[top] || (n[r.Case] == n[top] && r.Case < top) {
+			top = r.Case
+		}
+	}
+	text := "You asked which test to write next"
+	if top != "" {
+		text += fmt.Sprintf(", mostly: %s (%d×)", coach.CaseName[top], n[top])
+	}
+	return text + ". Before asking, go through zero, one, many, boundaries and errors yourself."
+}
+
 func icon(l coach.Level) string {
 	return map[coach.Level]string{coach.OK: "✓", coach.Hint: "➜", coach.Warn: "⚠", coach.Uncertain: "?"}[l]
 }
@@ -168,13 +191,17 @@ func Render(h app.History, pending int, d Differ) string {
 
 	b.WriteString("## Focus tips\n\n")
 	ts := tips(h)
-	if len(ts) == 0 {
+	nt := nextTestTip(h)
+	if len(ts) == 0 && nt == "" {
 		b.WriteString("Nothing stood out. Keep going.\n\n")
 	}
 	for i, t := range ts {
 		fmt.Fprintf(&b, "%d. **%s** (%d×): %s\n", i+1, coach.Label(t.check), t.n, t.text)
 	}
-	if len(ts) > 0 {
+	if nt != "" {
+		fmt.Fprintf(&b, "%d. **Next test** (%d×): %s\n", len(ts)+1, len(h.NextTests), nt)
+	}
+	if len(ts) > 0 || nt != "" {
 		b.WriteString("\n")
 	}
 
@@ -241,6 +268,22 @@ func Render(h app.History, pending int, d Differ) string {
 	}
 	if n == 0 {
 		b.WriteString("None.\n")
+	}
+	if len(h.NextTests) > 0 {
+		b.WriteString("\n## Next-test hints\n\n")
+		cycleOf := map[int]int{}
+		for _, c := range cycles(h) {
+			for _, r := range c.steps {
+				cycleOf[r.Step.N] = c.n
+			}
+		}
+		for _, r := range h.NextTests {
+			where := "Before the first step"
+			if r.Step > 0 {
+				where = fmt.Sprintf("After step %d (cycle %d)", r.Step, cycleOf[r.Step])
+			}
+			fmt.Fprintf(&b, "- %s: %s, stage %d\n", where, coach.CaseName[r.Case], r.Stage)
+		}
 	}
 	b.WriteString("\n## Uncertain verdicts\n\nThe judge was not sure about these; they were not shown during the session.\n\n")
 	n = 0
