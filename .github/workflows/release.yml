@@ -21,7 +21,7 @@ jobs:
           GOARCH: amd64
       # llama.cpp libraries (pinned, SHA-256 checked) into lib/ next to the binary
       - run: ./dist/tddt/tddt setup --skip-model --lib-dir dist/tddt/lib
-      - run: cp README.md dist/tddt/
+      - run: cp README.md LICENSE dist/tddt/
       - run: tar -C dist -czf tddt-${{ github.ref_name }}-linux-amd64.tar.gz tddt
       - uses: actions/upload-artifact@v4
         with:
@@ -46,7 +46,7 @@ jobs:
           foreach ($d in "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
             Copy-Item "$env:WINDIR/System32/$d" dist/tddt/
           }
-          Copy-Item README.md dist/tddt/
+          Copy-Item README.md, LICENSE dist/tddt/
       - shell: pwsh
         run: Compress-Archive -Path dist/tddt -DestinationPath "tddt-${{ github.ref_name }}-windows-amd64.zip"
       - uses: actions/upload-artifact@v4

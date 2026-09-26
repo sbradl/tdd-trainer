@@ -82,3 +82,7 @@ slow_run_warning: 5s
 ```
 
 Without `results`, only the exit code is used and the verdicts are weaker.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). The release archives also contain llama.cpp (MIT) and, on Windows, the Microsoft VC++ runtime DLLs; the judge model is Apache-2.0.
