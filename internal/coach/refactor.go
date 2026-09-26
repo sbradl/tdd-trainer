@@ -2,6 +2,7 @@ package coach
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -137,23 +138,48 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 		return []Verdict{v}
 	}
 	resolved := Verdict{Check: opportunity, Level: OK, Text: "Resolved: your refactoring removed " + lowerFirst(issue.problem)}
-	lensJob := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: net}, gates: lenses,
+	// the lenses and, for each, which problem it sees now
+	var lensGates []string
+	for _, n := range lenses {
+		lensGates = append(lensGates, n, n+"~which")
+	}
+	lensJob := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: net}, gates: lensGates,
 		finish: func(vs map[string]judge.Verdict) []Verdict {
-			clean, found := 0, false
+			clean, same, now := 0, false, ""
 			for _, n := range lenses {
 				switch vs[n].Answer {
 				case "no":
 					clean++
 				case "yes":
-					found = true
+					w := vs[n+"~which"]
+					if w.Answer == judge.Uncertain {
+						continue // something, but not clearly what: not the old problem for sure
+					}
+					desc := problemDesc(n, w.Answer)
+					if slices.Contains(problems, desc) {
+						same = true
+					} else if now == "" {
+						now = desc
+					}
 				}
 			}
 			switch {
 			case clean == len(lenses):
 				return verdict(resolved, true)
-			case found:
+			case same:
 				return verdict(Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf(
 					"Still there in %s after your last change: %s (tddt show %d)", issue.where, issue.problem, g.N)}, false)
+			case now != "":
+				// the old problem is gone; the hint follows the new one
+				v := Verdict{Check: opportunity, Level: Hint, Text: fmt.Sprintf(
+					"Your refactoring removed %s But the review now finds in %s: %s (tddt show %d)", lowerFirst(issue.problem), issue.where, now, g.N)}
+				out := verdict(v, false)
+				c.mu.Lock()
+				if !issue.closed {
+					issue.problem, issue.problems = now, []string{now}
+				}
+				c.mu.Unlock()
+				return out
 			}
 			return verdict(Verdict{Check: opportunity, Level: OK, Text: "Probably resolved: after your refactoring the review no longer clearly finds " +
 				lowerFirst(issue.problem)}, true)
@@ -186,6 +212,16 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 	c.mu.Unlock()
 	c.enqueue(j)
 	return nil
+}
+
+// problemDesc is the description of a lens problem by its option ID.
+func problemDesc(lens, id string) string {
+	for _, o := range judge.LensProblems[lens] {
+		if o.ID == id {
+			return o.Desc
+		}
+	}
+	return id
 }
 
 // sourceDiff joins the production code patches between two snapshots.

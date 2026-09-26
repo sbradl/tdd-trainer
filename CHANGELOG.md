@@ -14,7 +14,7 @@
 
 - **Filling in an existing test now starts a Red.** If you write an empty test first and give it its body later, the Red completes once the test fails on its assertion. Before, it stayed in "Red in progress" forever. A passing test you change so that it fails now counts as a Red too, not as a broken test, as long as you changed only test files.
 - **Refactoring tests no longer looks like a new test.** If a test refactoring broke the build for a moment (say, a half-written helper), fixing it gave the warning "a new or changed test passed without failing first". Now it counts as a refactoring.
-- **Refactor now updates after every refactoring.** When the judge wasn't sure your refactoring removed the problem, the hint stayed as it was, as if nothing had happened. Now the review that raised the hint looks again at the code as it is, and the hint says *Resolved*, *Still there* or *Probably resolved*.
+- **Refactor now updates after every refactoring.** When the judge wasn't sure your refactoring removed the problem, the hint stayed as it was, as if nothing had happened. Now the review that raised the hint looks again at the code as it is, and the hint says *Resolved*, *Still there* or *Probably resolved*. If the refactoring removed the problem but left another one (say, a placeholder string), the hint says so and follows the new problem, instead of claiming the old one is still there.
 
 ### Reports
 

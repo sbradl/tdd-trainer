@@ -473,6 +473,51 @@ func TestUnsureLensesMeanProbablyResolved(t *testing.T) {
 	}
 }
 
+// lensSees makes the smells lens still find something after the
+// refactoring, and names it with which ("?": not clearly anything).
+func lensSees(k *kata, which string) {
+	sc := k.coach.scorer.(*scripted)
+	sc.answer = func(gate, state string) string {
+		switch gate {
+		case "review-smells", "review-smells~clean":
+			return "yes"
+		case "review-smells~which":
+			return which
+		}
+		return ""
+	}
+}
+
+func TestRefactoringThatLeavesAnotherProblemSaysSo(t *testing.T) {
+	k := smellyKata(t)
+	lensSees(k, "dead-code")
+	k.write("kata.go", loopRoman)
+	k.run("TestOne TestTwo")
+	k.drain()
+	v := k.last(2, "refactor opportunity")
+	if v == nil || v.Level != Hint || !strings.HasPrefix(v.Text, "Your refactoring removed repeated conditionals") || !strings.Contains(v.Text, "now finds in kata.go: Dead code.") {
+		t.Fatalf("got %+v", v)
+	}
+	// the hint follows the new problem
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
+	k.run("TestOne TestTwo TestThree", "TestThree")
+	k.drain()
+	if v := k.last(4, "missed refactor"); v == nil || v.Level != Hint || !strings.Contains(v.Text, "Dead code.") || strings.Contains(v.Text, "Repeated") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestLensUnsureWhichProblemMeansProbablyResolved(t *testing.T) {
+	k := smellyKata(t)
+	lensSees(k, "?")
+	k.write("kata.go", loopRoman)
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Probably resolved:") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
 func TestSkippingTheRefactorIsMissed(t *testing.T) {
 	k := smellyKata(t)
 	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
