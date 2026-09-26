@@ -2,12 +2,16 @@
 
 ## Upcoming version
 
+Nothing yet.
+
+## 2026-09-26.2
+
 ### Coaching
 
 - **Next-test hints.** Stuck on which test to write next? Press `n` while the tests are green. The first press names the kind of test ("Try an edge case."), the second the case, and the transformation it will probably need. Hints follow the ZOMBIES checklist: zero/empty, one, many, boundaries, errors. Right after a Green that faked its result with a constant, the hint is to triangulate with a second example. The judge looks at your tests only when you ask, ahead of other checks, so the first press takes a few seconds. When it isn't sure, it says so instead of guessing.
 - **`tddt next`** prints the same hint for the code as it is now, without a running session.
 - **The test code is reviewed too.** Right after each Green, *Refactor tests now* points out test bodies that repeat the same steps, names that don't say which behaviour they check, expected values computed instead of written down, and failures that don't say what was expected and what came out. It updates as you refactor the tests, and the next Red notes if you skipped it.
-- **Faster refactor review.** The domain-design lens is gone: it asks design questions above the level of one TDD cycle. The remaining questions are shorter, so the review after each Green takes about a third less time. The next-test hint's second stage is faster too.
+- **Faster refactor review.** The domain-design lens is gone: it asks design questions above the level of one TDD cycle. The remaining questions are shorter, so the code review after each Green takes about a third less time; the new test review uses about that much again. The next-test hint's second stage is faster too.
 - **Refactor hints name the file**, as in "Worth refactoring roman.go now…", so it's clear they are about the production code, not the tests.
 
 ### Fixes
