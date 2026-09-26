@@ -142,7 +142,7 @@ func TestRunWithoutConfigStartsInit(t *testing.T) {
 		"k_test.go": "package k\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
 	})
 	var out bytes.Buffer
-	if err := run([]string{root}, strings.NewReader("\n"), &out); err != nil {
+	if err := run([]string{"--once", root}, strings.NewReader("\n"), &out); err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
 	if !strings.Contains(out.String(), "let's create one") || !strings.HasSuffix(out.String(), "all green\n") {

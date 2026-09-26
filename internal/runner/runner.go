@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/results"
@@ -123,6 +124,9 @@ func shell(ctx context.Context, dir, cmdline string, env map[string]string, extr
 		cmd = exec.CommandContext(ctx, "sh", "-c", cmdline)
 	}
 	cmd.Dir = dir
+	killTree(cmd)
+	// Grandchildren may hold the output pipes open; don't wait for them.
+	cmd.WaitDelay = time.Second
 	if len(env) > 0 {
 		cmd.Env = os.Environ()
 		for k, v := range env {

@@ -9,13 +9,16 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/runner"
+	"github.com/sbradl/tdd-trainer/internal/session"
+	"github.com/sbradl/tdd-trainer/internal/watch"
 )
 
 const usage = `usage:
-  tddt [dir]                               watch the project in dir (default .)
+  tddt [--once] [dir]                      watch the project in dir (default .)
   tddt init [--preset NAME] [--yes] [dir]  write .tddtrainer.yml
 `
 
@@ -34,6 +37,7 @@ func run(args []string, in io.Reader, out io.Writer) error {
 	}
 	fs := flag.NewFlagSet("tddt", flag.ContinueOnError)
 	fs.Usage = func() { fmt.Fprint(fs.Output(), usage) }
+	once := fs.Bool("once", false, "run the tests once, print the Test state and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -58,14 +62,51 @@ func run(args []string, in io.Reader, out io.Writer) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	o, err := runner.Run(ctx, cfg, dir)
+	if *once {
+		o, err := runner.Run(ctx, cfg, dir)
+		if err != nil {
+			return err
+		}
+		if o.ExitCodeOnly {
+			fmt.Fprintln(out, exitCodeOnlyWarning)
+		}
+		fmt.Fprintln(out, o.State)
+		return nil
+	}
+	return watchLoop(ctx, cfg, dir, out)
+}
+
+const exitCodeOnlyWarning = "warning: no test results read, using the exit code only; verdicts will be weaker"
+
+// watchLoop prints plain event lines; the TUI replaces it later.
+func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer) error {
+	w, err := watch.New(dir, cfg, watch.DefaultDebounce)
 	if err != nil {
 		return err
 	}
-	if o.ExitCodeOnly {
-		fmt.Fprintln(os.Stderr, "tddt: warning: no test results read, using the exit code only; verdicts will be weaker")
-	}
-	fmt.Fprintln(out, o.State)
+	batches, _ := w.Run(ctx)
+	warnedExitCode := false
+	fmt.Fprintln(out, "Watching; Ctrl-C to quit.")
+	session.Loop(ctx, batches, func(ctx context.Context) (runner.Outcome, error) {
+		return runner.Run(ctx, cfg, dir)
+	}, cfg.SlowRunWarning, func(e session.Event) {
+		switch e := e.(type) {
+		case session.RunStarted:
+			if e.Changed != nil {
+				fmt.Fprintf(out, "changed: %s\n", strings.Join(e.Changed, ", "))
+			}
+		case session.SlowRun:
+			fmt.Fprintf(out, "warning: test run is taking longer than %v\n", e.Limit)
+		case session.RunFailed:
+			fmt.Fprintln(out, "error:", e.Err)
+		case session.RunDone:
+			if e.Outcome.ExitCodeOnly && !warnedExitCode {
+				warnedExitCode = true
+				fmt.Fprintln(out, exitCodeOnlyWarning)
+			}
+			fmt.Fprintf(out, "%s (%.1fs)\n", e.Outcome.State, e.Duration.Seconds())
+		}
+	})
 	return nil
 }
 
