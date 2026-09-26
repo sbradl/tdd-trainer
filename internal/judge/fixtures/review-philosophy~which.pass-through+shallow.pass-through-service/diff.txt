@@ -1,0 +1,7 @@
++++ b/users/service.go
++type UserService struct{ repo *UserRepo }
++
++func (s *UserService) Find(id int) (*User, error) { return s.repo.Find(id) }
++func (s *UserService) Save(u *User) error         { return s.repo.Save(u) }
++func (s *UserService) Delete(id int) error        { return s.repo.Delete(id) }
++func (s *UserService) List() ([]*User, error)     { return s.repo.List() }

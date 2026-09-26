@@ -46,20 +46,25 @@ refactor-effect.worsens.py-pass-through      expect=worsens        got=uncertain
 review-clean-code.no.error-message           expect=no             got=no             p=0.913 ok
 review-clean-code.no.go-fake-it              expect=no             got=no             p=0.979 ok
 review-clean-code.yes.cryptic-flag-magic     expect=yes            got=yes            p=0.980 ok
-review-ddd.no.error-message                  expect=no             got=uncertain      p=0.672 MISS
+review-clean-code~which.names+magic+flag-arg.cryptic-flag-magic expect=names+magic+flag-arg got=flag-arg       p=0.650 ok
+review-ddd.no.error-message                  expect=no             got=uncertain      p=0.679 MISS
 review-ddd.no.go-fake-it                     expect=no             got=uncertain      p=0.558 MISS
 review-ddd.yes.anemic-float-money            expect=yes            got=yes            p=0.948 ok
+review-ddd~which.anemic+primitive-obsession+value-object.anemic-float-money expect=anemic+primitive-obsession+value-object got=anemic         p=0.729 ok
 review-philosophy.no.error-message           expect=no             got=no             p=0.920 ok
 review-philosophy.no.go-fake-it              expect=no             got=uncertain      p=0.517 MISS
-review-philosophy.yes.pass-through-service   expect=yes            got=uncertain      p=0.654 MISS
-review-pragmatic.no.error-message            expect=no             got=no             p=0.982 ok
+review-philosophy.yes.pass-through-service   expect=yes            got=uncertain      p=0.648 MISS
+review-philosophy~which.pass-through+shallow.pass-through-service expect=pass-through+shallow got=pass-through   p=0.997 ok
+review-pragmatic.no.error-message            expect=no             got=no             p=0.983 ok
 review-pragmatic.no.go-fake-it               expect=no             got=no             p=0.966 ok
 review-pragmatic.yes.demeter-hardcoded-host  expect=yes            got=yes            p=1.000 ok
+review-pragmatic~which.demeter+hard-coded.demeter-hardcoded-host expect=demeter+hard-coded got=hard-coded     p=0.998 ok
 review-smells.no.error-message               expect=no             got=no             p=0.989 ok
 review-smells.no.go-fake-it                  expect=no             got=no             p=0.993 ok
 review-smells.yes.duplicated-total           expect=yes            got=yes            p=0.993 ok
-step-size.complex.ex-sum-list                expect=complex        got=complex        p=0.960 ok
-step-size.complex.prime-factors              expect=complex        got=complex        p=0.913 ok
+review-smells~which.duplicated.duplicated-total expect=duplicated     got=duplicated     p=1.000 ok
+step-size.complex.ex-sum-list                expect=complex        got=complex        p=0.959 ok
+step-size.complex.prime-factors              expect=complex        got=complex        p=0.912 ok
 step-size.complex.word-frequency             expect=complex        got=complex        p=0.767 ok
 step-size.constant.cs-greeting               expect=constant       got=constant       p=0.917 ok
 step-size.constant.go-add-marker             expect=constant       got=uncertain      p=0.431 MISS
@@ -95,4 +100,4 @@ tpp.selection.ex-clause                      expect=selection      got=selection
 tpp.selection.ts-guard                       expect=selection      got=selection      p=0.899 ok
 tpp.variable                                 expect=variable       got=variable       p=0.986 ok
 tpp.variable.cs-greet                        expect=variable       got=variable       p=0.989 ok
-87/96 confident and correct, 0 confident and wrong, 9 uncertain  
+92/101 confident and correct, 0 confident and wrong, 9 uncertain  

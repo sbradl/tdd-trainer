@@ -96,12 +96,14 @@ func TestFixtures(t *testing.T) {
 	}
 	for _, f := range fx {
 		g := Gates[f.Gate]
-		valid := false
-		for _, o := range g.Options {
-			valid = valid || o.ID == f.Expected
-		}
-		if !valid {
-			t.Errorf("%s: %q is not an option of %s", f.Name, f.Expected, f.Gate)
+		for _, want := range strings.Split(f.Expected, "+") {
+			valid := false
+			for _, o := range g.Options {
+				valid = valid || o.ID == want
+			}
+			if !valid {
+				t.Errorf("%s: %q is not an option of %s", f.Name, want, f.Gate)
+			}
 		}
 		for _, p := range g.Parts {
 			if strings.TrimSpace(f.Evidence[p]) == "" {

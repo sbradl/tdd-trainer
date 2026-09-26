@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sbradl/tdd-trainer/internal/judge"
+	"github.com/sbradl/tdd-trainer/internal/steps"
 )
 
 func gateVerdict(v judge.Verdict, level Level, text string) Verdict {
@@ -127,15 +128,17 @@ var lensTitle = map[string]string{
 	"review-philosophy": "module design",
 }
 
-// finishLenses combines the review lenses into one missed-refactor verdict.
-func finishLenses(vs map[string]judge.Verdict) []Verdict {
+// finishLenses combines the review lenses into one missed-refactor
+// verdict. When lenses find something, a follow-up job asks each of them
+// which problem it is, so the hint can say what to refactor.
+func (c *Coach) finishLenses(red steps.Step, green int, ev judge.Evidence, vs map[string]judge.Verdict) []Verdict {
 	var found, unsure []string
 	maxP := 0.0
 	for _, name := range judge.LensNames() {
 		v := vs[name]
 		switch v.Answer {
 		case "yes":
-			found = append(found, lensTitle[name])
+			found = append(found, name)
 			maxP = max(maxP, v.P)
 		case judge.Uncertain:
 			unsure = append(unsure, lensTitle[name])
@@ -143,10 +146,53 @@ func finishLenses(vs map[string]judge.Verdict) []Verdict {
 	}
 	switch {
 	case len(found) > 0:
-		return []Verdict{{Check: "missed refactor", Level: Hint, P: maxP, Text: fmt.Sprintf(
-			"The last Green left something to refactor (review: %s). Consider refactoring before the next Red.", strings.Join(found, ", "))}}
+		var which []string
+		for _, name := range found {
+			which = append(which, name+"~which")
+		}
+		c.enqueue(&job{prio: prioLenses, step: red.N, kind: red.Kind, ev: ev, gates: which,
+			finish: func(ws map[string]judge.Verdict) []Verdict {
+				return []Verdict{missedRefactorHint(green, found, ws, maxP)}
+			}})
+		return nil
 	case len(unsure) > 0:
 		return []Verdict{{Check: "missed refactor", Level: Uncertain, Text: "not sure (" + strings.Join(unsure, ", ") + ")"}}
 	}
 	return []Verdict{{Check: "missed refactor", Level: OK, Text: "nothing worth refactoring after the last Green"}}
+}
+
+// missedRefactorHint names the problem each firing lens sees most clearly.
+func missedRefactorHint(green int, lenses []string, which map[string]judge.Verdict, p float64) Verdict {
+	var problems []string
+	seen := map[string]bool{}
+	for _, name := range lenses {
+		w := which[name+"~which"]
+		desc := ""
+		for _, o := range judge.LensProblems[name] {
+			if o.ID == w.Top {
+				desc = o.Desc
+			}
+		}
+		if desc == "" || seen[desc] {
+			continue
+		}
+		seen[desc] = true
+		if w.Answer == judge.Uncertain {
+			desc = "probably " + lowerFirst(desc)
+		}
+		problems = append(problems, desc+" ("+lensTitle[name]+")")
+	}
+	where := "The last Green"
+	if green > 0 {
+		where = fmt.Sprintf("The last Green (step %d, see tddt show %d)", green, green)
+	}
+	return Verdict{Check: "missed refactor", Level: Hint, P: p, Text: fmt.Sprintf(
+		"%s left something to refactor: %s Refactor before the next Red.", where, strings.Join(problems, " "))}
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
 }

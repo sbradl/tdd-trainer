@@ -50,7 +50,7 @@ type Anomaly int
 
 const (
 	MultipleNewTests  Anomaly = iota // several new tests in one Red
-	NewTestPassed                    // a new test passed without ever failing
+	NewTestPassed                    // a new or changed test passed without ever failing
 	CodeWithoutTest                  // production code changed along with new, already passing tests
 	TestEditedInGreen                // a test file changed during Green
 	BrokeExistingTest                // a previously passing test went red
@@ -59,7 +59,7 @@ const (
 func (a Anomaly) String() string {
 	return [...]string{
 		"several new tests in one step",
-		"new test passed without failing first",
+		"new or changed test passed without failing first",
 		"production code changed without a failing test",
 		"test edited during Green",
 		"an existing test went red",
@@ -211,7 +211,7 @@ func (m *Machine) Observe(o Observation) []Event {
 			}
 			slices.Sort(tests)
 			m.inProgress = nil
-			if len(tests) == 0 {
+			if len(tests) == 0 && !m.pending.tests {
 				// broke the build while refactoring, then fixed it
 				m.refactored.add(m.pending)
 				m.pending = changes{}

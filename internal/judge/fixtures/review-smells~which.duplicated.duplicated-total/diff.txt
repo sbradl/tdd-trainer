@@ -1,0 +1,22 @@
++++ b/billing/totals.go
++func InvoiceTotal(items []Item) float64 {
++	total := 0.0
++	for _, it := range items {
++		total += it.Price * float64(it.Qty)
++	}
++	if total > 100 {
++		total = total * 0.9
++	}
++	return total
++}
++
++func QuoteTotal(items []Item) float64 {
++	total := 0.0
++	for _, it := range items {
++		total += it.Price * float64(it.Qty)
++	}
++	if total > 100 {
++		total = total * 0.9
++	}
++	return total
++}

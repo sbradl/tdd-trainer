@@ -342,3 +342,41 @@ func TestTPPLabelHonoursOrder(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestMissedRefactorSaysWhatToRefactor(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no", "cheating": "no",
+		"review-smells": "yes", "review-smells~clean": "yes", "review-smells~which": "duplicated",
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"\" }\n")
+	k.write("kata_test.go", header)
+	k.run("")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne", "TestOne")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II"))
+	k.run("TestOne TestTwo", "TestTwo")
+	k.drain()
+	var hint *Verdict
+	for i, v := range k.got {
+		if v.Check == "missed refactor" {
+			if hint != nil {
+				t.Fatalf("two missed-refactor verdicts: %+v", k.got)
+			}
+			hint = &k.got[i]
+		}
+	}
+	if hint == nil || hint.Level != Hint || hint.Step != 3 {
+		t.Fatalf("got %+v", hint)
+	}
+	for _, want := range []string{"step 2", "tddt show 2", "Duplicated code", "(code smells)"} {
+		if !strings.Contains(hint.Text, want) {
+			t.Errorf("hint %q misses %q", hint.Text, want)
+		}
+	}
+	if !strings.Contains(sc.evidence["review-smells~which"], `+func Roman(n int) string { return "I" }`) {
+		t.Errorf("which-probe evidence:\n%s", sc.evidence["review-smells~which"])
+	}
+}

@@ -66,6 +66,7 @@ type Coach struct {
 	lastRed *redEvidence
 	// last completed Green's source diff, for the missed-refactor lenses
 	lastGreenDiff string
+	lastGreenStep int
 }
 
 type redEvidence struct {
@@ -188,7 +189,6 @@ func (c *Coach) Run(ctx context.Context) {
 		}
 		vs, err := j.Evaluate(ctx, next.ev, next.gates)
 		c.mu.Lock()
-		c.running = nil
 		if err == nil {
 			d := time.Since(c.started) / time.Duration(len(next.gates))
 			if c.perGate == 0 {
@@ -202,6 +202,9 @@ func (c *Coach) Run(ctx context.Context) {
 			return
 		}
 		if err != nil {
+			c.mu.Lock()
+			c.running = nil
+			c.mu.Unlock()
 			c.emit(Verdict{Step: next.step, Kind: next.kind, Check: "judge", Level: Uncertain, Text: "judge failed: " + err.Error()})
 			continue
 		}
@@ -209,7 +212,13 @@ func (c *Coach) Run(ctx context.Context) {
 		for _, v := range vs {
 			byGate[v.Gate] = v
 		}
-		for _, v := range next.finish(byGate) {
+		// finish may queue a follow-up job; the job counts as pending until
+		// then, so nobody sees an empty queue in between
+		vs2 := next.finish(byGate)
+		c.mu.Lock()
+		c.running = nil
+		c.mu.Unlock()
+		for _, v := range vs2 {
 			v.Step, v.Kind = next.step, next.kind
 			c.emit(v)
 		}
@@ -266,18 +275,21 @@ func (c *Coach) Step(s steps.Step) error {
 		c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
 		if s.AfterGreen {
 			c.mu.Lock()
-			diff := c.lastGreenDiff
+			diff, green := c.lastGreenDiff, c.lastGreenStep
 			c.mu.Unlock()
 			if strings.TrimSpace(diff) != "" {
-				c.enqueue(&job{prio: prioLenses, step: s.N, kind: s.Kind, ev: judge.Evidence{judge.PartDiff: diff},
-					gates: judge.LensNames(), finish: finishLenses})
+				ev := judge.Evidence{judge.PartDiff: diff}
+				c.enqueue(&job{prio: prioLenses, step: s.N, kind: s.Kind, ev: ev,
+					gates: judge.LensNames(), finish: func(vs map[string]judge.Verdict) []Verdict {
+						return c.finishLenses(s, green, ev, vs)
+					}})
 			}
 		}
 
 	case steps.Green:
 		c.mu.Lock()
 		red := c.lastRed
-		c.lastGreenDiff = sourceDiff
+		c.lastGreenDiff, c.lastGreenStep = sourceDiff, s.N
 		c.mu.Unlock()
 		if strings.TrimSpace(sourceDiff) == "" {
 			exact("tpp", OK, "no production code changed")
@@ -310,7 +322,7 @@ func (c *Coach) Step(s steps.Step) error {
 
 var anomalyText = map[steps.Anomaly]string{
 	steps.MultipleNewTests:  "Several new tests in one step: write one failing test at a time.",
-	steps.NewTestPassed:     "The new test passed without failing first: make sure it can fail, or it proves nothing.",
+	steps.NewTestPassed:     "A new or changed test passed without failing first: make sure it can fail, or it proves nothing.",
 	steps.CodeWithoutTest:   "Production code changed without a failing test: write the test first and watch it fail.",
 	steps.TestEditedInGreen: "A test was changed while making it pass: change tests in Red or Refactor, not in Green.",
 	steps.BrokeExistingTest: "A test that passed before is failing now: undo the last change or get back to green first.",

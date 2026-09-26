@@ -95,7 +95,7 @@ func TestLab(t *testing.T) {
 			v := decide(g, probs[0], clean)
 			mark := " "
 			switch {
-			case v.Answer == f.Expected:
+			case strings.Contains("+"+f.Expected+"+", "+"+v.Answer+"+"):
 				correct[i]++
 				mark = "+"
 			case v.Answer != Uncertain:

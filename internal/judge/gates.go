@@ -87,6 +87,59 @@ var Lenses = map[string]string{
 	"review-philosophy": "Philosophy of Software Design (Ousterhout): shallow modules, pass-through methods or variables, information leakage (one design decision baked into several places), temporal decomposition, special-case code mixed into general code, conjoined methods, unclear interfaces",
 }
 
+// LensProblems lists the concrete problems each lens looks for; the
+// "<lens>~which" gate picks the one a diff shows most clearly, so a
+// missed-refactor hint can say what to refactor.
+var LensProblems = map[string][]Option{
+	"review-smells": {
+		{"duplicated", "Duplicated code: the same logic or the same literal appears more than once."},
+		{"long-function", "Long function: one function does a lot and could be split."},
+		{"long-params", "Long parameter list: a function takes many parameters."},
+		{"feature-envy", "Feature envy: a function works mostly on another object's data."},
+		{"data-clumps", "Data clumps: the same group of values travels together without its own type."},
+		{"primitive-obsession", "Primitive obsession: a concept is passed around as a raw string, number or boolean."},
+		{"repeated-switch", "Repeated conditionals: the same if/switch on the same value appears in several places, or a chain of special cases grows."},
+		{"speculative", "Speculative generality: code or parameters nobody needs yet."},
+		{"message-chains", "Message chains: a.b().c().d() reaching through objects."},
+		{"dead-code", "Dead code: code that is never used."},
+	},
+	"review-clean-code": {
+		{"names", "Unclear names: cryptic, abbreviated or misleading names."},
+		{"magic", "Magic numbers or strings: unexplained literals that deserve a name."},
+		{"does-too-much", "A function does more than one thing."},
+		{"many-args", "Too many arguments."},
+		{"flag-arg", "Flag argument: a boolean parameter switches between two behaviours."},
+		{"side-effects", "Hidden side effects."},
+		{"comments", "Comments that explain unclear code instead of clarifying it."},
+		{"formatting", "Inconsistent formatting."},
+	},
+	"review-ddd": {
+		{"names", "Names drift from the domain's language."},
+		{"anemic", "Anemic model: business rules live outside the type that owns the data."},
+		{"primitive-obsession", "Domain concepts such as money or IDs passed around as raw strings, numbers or booleans."},
+		{"value-object", "A missing value object that would group and validate related values."},
+		{"wrong-layer", "Logic in the wrong layer."},
+		{"leaking-shapes", "External data shapes leak into the domain."},
+	},
+	"review-pragmatic": {
+		{"dry", "Duplicated knowledge (DRY): the same fact or rule is written in more than one place."},
+		{"demeter", "Coupling or Law of Demeter violations: reaching through objects."},
+		{"hard-coded", "Environment-specific values (hosts, URLs, paths, credentials, limits) hard-coded instead of configured."},
+		{"orthogonality", "Orthogonality break: one change would ripple through unrelated parts."},
+		{"coincidence", "Programming by coincidence: code that works for unclear reasons."},
+		{"broken-window", "A broken window: sloppy code left unfixed."},
+	},
+	"review-philosophy": {
+		{"shallow", "Shallow module: an interface as complex as what it hides."},
+		{"pass-through", "Pass-through methods or variables that only forward to another layer."},
+		{"leakage", "Information leakage: one design decision baked into several places."},
+		{"temporal", "Temporal decomposition: code split by order of execution instead of by knowledge."},
+		{"special-case", "Special-case code mixed into general code."},
+		{"conjoined", "Conjoined methods that only make sense together."},
+		{"unclear-interface", "An unclear interface."},
+	},
+}
+
 // Gates holds every gate by name. Any change to a question or option must
 // be checked with `tddt judge --regress`.
 var Gates = map[string]Gate{}
@@ -118,6 +171,8 @@ func init() {
 	for name, focus := range Lenses {
 		clean := Gate{Name: name + "~clean", Options: yesNo, Parts: []Part{PartDiff}, Floor: floor,
 			Question: fmt.Sprintf("Would a careful reviewer checking only for %s raise at least one real finding on this source diff? A tiny, clearly named change with nothing of that kind is no.", focus)}
+		add(Gate{Name: name + "~which", Options: LensProblems[name], Parts: []Part{PartDiff}, Floor: 0.5,
+			Question: "A reviewer found at least one of the problems listed in the options in this source diff. Which one does the diff show most clearly?"})
 		add(Gate{Name: name, Options: yesNo, Parts: []Part{PartDiff}, Clean: &clean,
 			Question: fmt.Sprintf("Does this source diff contain at least one of these problems? Lens: %s. Answer yes if any added code shows one of them, even a small instance.", focus)})
 	}

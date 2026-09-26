@@ -7,12 +7,14 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 )
 
-// Fixtures are labelled evidence per gate, named <gate>.<expected>[.<tag>],
+// Fixtures are labelled evidence per gate, named <gate>.<expected>[.<tag>]
+// (several acceptable answers joined by "+"),
 // holding test.txt, transcript.txt, source.txt and diff.txt as needed.
 //
 //go:embed fixtures
@@ -90,7 +92,7 @@ func Regress(ctx context.Context, j Judge, only []string, w io.Writer) (RegressR
 		r.Total++
 		mark := "MISS"
 		switch {
-		case v.Answer == f.Expected:
+		case slices.Contains(strings.Split(f.Expected, "+"), v.Answer):
 			r.Correct++
 			mark = "ok"
 		case v.Answer == Uncertain:

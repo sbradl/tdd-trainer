@@ -224,6 +224,12 @@ func TestTransitions(t *testing.T) {
 			{"a c d | d", "t"},
 		}, "Baseline; Refactor[s0→s1]; Red(d)[s1→s2]"},
 
+		{"existing test filled in and passing without failing first", []run{
+			{"a |", ""},
+			{"broken", "t"},
+			{"a |", "s"},
+		}, "Baseline; RedInProgress; Anomaly(passed)[s0→s2]"},
+
 		{"build broken during refactor then green is still refactor", []run{
 			{"a |", ""},
 			{"broken", "s"},
