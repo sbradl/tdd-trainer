@@ -1,9 +1,5 @@
 # Changelog
 
-What changed in each version of `tddt`, written for the people who use it.
-
-Releases are named by their date (`yyyy-MM-dd`). To cut one, rename **Upcoming version** to the date, start a new, empty **Upcoming version** above it, and push a tag with the same name (for example `git tag 2026-10-01 && git push origin 2026-10-01`). The release workflow uses that section as the release notes.
-
 ## Upcoming version
 
 Nothing yet.
