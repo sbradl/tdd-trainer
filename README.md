@@ -2,15 +2,15 @@
 
 `tddt` sits next to your editor while you practise test-driven development. Every time you save, it runs your tests, works out which step of the cycle you just finished (**Red**, **Green** or **Refactor**) and tells you how it went:
 
-- **Red:** did you add exactly one small test, and does it fail for the right reason (on its assertion, not on a compile error)?
+- **Red:** did you add exactly one small test, and does it fail for the right reason: on its assertion, proving the behaviour is missing, rather than on a typo, a broken setup or a crash?
 - **Green:** was it the simplest change that could work (following the [Transformation Priority Premise](https://en.wikipedia.org/wiki/Transformation_Priority_Premise)), or did you jump ahead, special-case the test's inputs, or do several things at once?
-- **Refactor:** did the tests stay green, did the behaviour stay the same, and did the code get better? And did you skip refactoring when the code needed it?
+- **Refactor:** right after each Green, is there something worth cleaning up? Did the tests stay green, did the behaviour stay the same, and did the code get better?
 
 It only advises. It never blocks, reverts or touches your git repository. Checks that exact rules can't decide go to a small language model that runs **locally**, so your code never leaves your machine. When you quit, you get a Markdown report of the session.
 
 Works on Linux and Windows (amd64) with any language. Built-in presets: **Go**, **Python** (pytest), **TypeScript/JavaScript** (jest, vitest), **.NET** (xUnit, NUnit, MSTest), **Lua** (busted) and **Elixir** (ExUnit).
 
-![The quiet coach view after four cycles of a Roman numerals kata](docs/screenshots/quiet-coach.svg)
+![The quiet coach view after five cycles of a Roman numerals kata](docs/screenshots/quiet-coach.svg)
 
 ## Contents
 
@@ -26,15 +26,13 @@ Works on Linux and Windows (amd64) with any language. Built-in presets: **Go**, 
 
 ### 1. Get `tddt`
 
-**Release archive (recommended).** Download `tddt-…-linux-amd64.tar.gz` or `tddt-…-windows-amd64.zip` from the [releases page](https://github.com/sbradl/tdd-trainer/releases) and unpack it anywhere, ideally somewhere on your `PATH`. The archive contains `tddt` and the llama.cpp libraries the judge needs.
+**Release archive:** download `tddt-…-linux-amd64.tar.gz` or `tddt-…-windows-amd64.zip` from the [releases page](https://github.com/sbradl/tdd-trainer/releases) and put `tddt` somewhere on your `PATH`. The archive holds just the binary.
 
-**With Go 1.24+:**
+**Or with Go 1.24+:**
 
 ```sh
 go install github.com/sbradl/tdd-trainer/cmd/tddt@latest
 ```
-
-`tddt setup` then downloads the libraries too.
 
 ### 2. Run the setup once
 
@@ -42,11 +40,13 @@ go install github.com/sbradl/tdd-trainer/cmd/tddt@latest
 tddt setup
 ```
 
-This does three things:
+`tddt` runs the judge model with [llama.cpp](https://github.com/ggml-org/llama.cpp). The setup fetches everything that needs, into your user cache folder:
 
-1. It installs the llama.cpp libraries if they are not there yet: a pinned build, SHA-256 checked, about 65 MB.
-2. It downloads the judge model, Qwen3.5-4B (3 GB, Apache-2.0), into your user cache folder, with progress and resume. It checks the SHA-256 too.
-3. It loads the model and judges one sample, to prove everything works:
+1. **The llama.cpp libraries** (about 65 MB). They are pinned to your `tddt` version, because the binary's bindings must match them exactly; a new `tddt` release brings newer ones.
+2. **The judge model**, Qwen3.5-4B (3 GB, Apache-2.0), with progress and resume.
+3. **A self-check:** it loads the model and judges one sample.
+
+Both downloads are SHA-256 checked. Example output (progress lines shortened):
 
 ```text
 Installing llama.cpp libraries into /home/you/.cache/tddt/lib
@@ -66,14 +66,15 @@ With a GPU (through Vulkan, including integrated GPUs) a verdict takes about a s
 tddt setup --model-file path/to/Qwen_Qwen3.5-4B-Q4_K_M.gguf
 ```
 
-You can also point the `TDDT_MODEL` environment variable at the file. `TDDT_LIB` points at a folder with the llama.cpp libraries.
+You can also point the `TDDT_MODEL` environment variable at the file, and `TDDT_LIB` at a folder with the llama.cpp libraries.
 
 **No model at all:** `tddt --no-judge` runs only the exact checks.
 
 ### Windows notes
 
 - The binaries are not code-signed, so SmartScreen may say it "protected your PC" the first time you run `tddt.exe`. Choose **More info → Run anyway**. You can check the download against `SHA256SUMS` from the release first.
-- The archive includes the Microsoft VC++ runtime DLLs next to `tddt.exe`. The Vulkan driver comes with your GPU driver; without it, `tddt` falls back to the CPU.
+- llama.cpp needs the Microsoft Visual C++ runtime. Most machines have it already. If `tddt setup` reports a missing `MSVCP140.dll` or `VCRUNTIME140.dll`, install the [Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe).
+- The Vulkan driver comes with your GPU driver. Without it, `tddt` uses the CPU.
 
 ## A session, step by step
 
@@ -90,22 +91,30 @@ Wrote .tddtrainer.yml.
 
 `tddt` recognises the project from its marker files (`go.mod`, `package.json`, `mix.exs`, `*.csproj`, …) and writes a config you can tweak later. It then watches the folder.
 
-**1. Write the first test.** `Roman` doesn't exist yet, so the build breaks. A compile error is not a proper Red, and the coach says so:
+**1. Write the first test.** `Roman` doesn't exist yet, so the build breaks. That compile error counts as failing: it tells you to create `Roman`. The coach shows the Red as *in progress* and asks for the smallest stub:
 
 ![Red in progress: the build is broken](docs/screenshots/red-in-progress.svg)
 
-**2. Add a stub** (`return ""`). Now the test fails on its assertion, which completes the Red. **Make it pass** with `return "I"`: that's a Green, using the simplest transformation, Nil → Constant.
+**2. Add the stub** (`return ""`). Now the test compiles and fails on its assertion: expected `"I"`, got `""`. That completes the Red, and it proves the behaviour really is missing. **Make it pass** with `return "I"`: that's a Green, using the simplest transformation, Nil → Constant.
 
-**3. Keep going.** Each finished Red → Green → Refactor cycle folds into one summary line. Cards appear only for hints and warnings. OK verdicts just increase the ✓ counter in the status line, so the view stays quiet while you do things right. In the screenshot at the top, the learner:
+**3. Refactor while it's green.** Right after each Green, the new code is reviewed. Here the learner made `Roman(2)` and `Roman(3)` pass with an `if` per number. A **Refactor now** card says what is worth cleaning up. The card for step 5 is from the cycle before: there, the learner started the next test without cleaning up first.
+
+![Refactor now: the review names what to clean up](docs/screenshots/refactor-now.svg)
+
+Each green save while you refactor re-checks it. A cosmetic change gets "Still there after your last change". Replacing the `if`s with `strings.Repeat("I", n)` resolves it, and the card goes away with a confirmation:
+
+![Resolved after refactoring](docs/screenshots/resolved.svg)
+
+**4. Keep going.** Each finished Red → Green → Refactor cycle folds into one summary line. Cards appear only for hints and warnings. OK verdicts just increase the ✓ counter in the status line, so the view stays quiet while you do things right. In the screenshot at the top, the learner:
 
 - added two tests at once (step 10), which gives a warning;
-- didn't clean up after special-casing `n == 4`. The coach names what to clean up and which step to look at.
+- special-cased `n == 4` instead of generalising. The coach names what to clean up and which step to look at.
 
-**4. Press Tab for the dashboard.** It shows the cycle strip (✓ ok, ➜ hint, ! warning), the tests, and every check of the current step. That includes pending ones with their expected time, and uncertain ones, greyed out:
+**5. Press Tab for the dashboard.** It shows the cycle strip (✓ ok, ➜ hint, ! warning), the tests, and every check of the current step. That includes pending ones with their expected time, and uncertain ones, greyed out:
 
 ![The dashboard with the current step's checks](docs/screenshots/dashboard.svg)
 
-**5. Quit with `q`.** `tddt` writes the report and prints a summary.
+**6. Quit with `q`.** `tddt` writes the report and prints a summary.
 
 ### Without a terminal UI
 
@@ -118,7 +127,7 @@ tests (0.1s): all green
 judge ready (GPU)
 changed: roman_test.go
 tests (0.1s): build broken
-» Red in progress: the new test does not fail on an assertion yet
+» Red in progress: add the smallest stub so the new test compiles and fails on its assertion
 changed: roman.go
 tests (0.2s): 1 failing:
   roman::TestOne
@@ -131,19 +140,19 @@ tests (0.7s): 1 failing:
   roman::TestTwo
 » step 3: Red — roman::TestTwo (directly after a Green: checking for a missed refactor)
 changed: roman.go
-tests (0.2s): all green
+tests (0.3s): all green
 » step 4: Green
-changed: roman_test.go
-tests (1.1s): 1 failing:
-  roman::TestThree
-» step 5: Red — roman::TestThree (directly after a Green: checking for a missed refactor)
 changed: roman.go
-tests (1.1s): all green
-» step 6: Green
-  HINT step 5 (Red) Refactor after Green: The last Green (step 4) left something to refactor: special-case code mixed into general code, and magic numbers or strings. Clean it up before the next Red (tddt show 4).
-Session: 56s, 3 cycles, 3 tests added, clean cycles 2 of 3 (66%).
-Focus: The last Green (step 4) left something to refactor: special-case code mixed into general code, and magic numbers or strings. Clean it up before the next Red (tddt show 4).
-Report: .tddtrainer/reports/2026-09-26T19-34-08.md
+tests (0.5s): all green
+  HINT step 4 (Green) Refactor now: Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 4).
+  RESOLVED step 4 (Green) Refactor now: Resolved: your refactoring removed special-case code mixed into general code, and magic numbers or strings.
+changed: roman_test.go
+tests (0.1s): all green
+» step 5: Anomaly — roman::TestThree [new or changed test passed without failing first]
+  WARNING step 5 (Anomaly) Cycle rhythm: A new or changed test passed without failing first: make sure it can fail, or it proves nothing.
+Session: 1m16s, 2 cycles, 3 tests added, clean cycles 1 of 2 (50%).
+Focus: A new or changed test passed without failing first: make sure it can fail, or it proves nothing.
+Report: .tddtrainer/reports/2026-09-26T19-52-12.md
 ```
 
 ### Looking at a step afterwards
@@ -153,12 +162,13 @@ Report: .tddtrainer/reports/2026-09-26T19-34-08.md
 ```text
 $ tddt show 4
 Step 4: Green
-snapshots bdf398dc..64c460d1
+snapshots bee8451a..ca7e661d
 
 ✓ Transformation               Applied Unconditional → Selection (4/8).
 ✓ Simplest change              The test needed a simple change and the code made one: no bigger than necessary.
 ✓ One transformation           One transformation, as a single new test should need.
 ? No test-specific code        The judge could not decide (best guess "yes", p=0.76).
+✓ Refactor now                 Resolved: your refactoring removed special-case code mixed into general code, and magic numbers or strings.
 
 diff --git a/roman.go b/roman.go
 --- a/roman.go
@@ -183,7 +193,7 @@ Exact rules come first. The judge only answers what they can't decide.
 |---|---|---|---|
 | Red | **One new test** | A Red adds exactly one failing test. | exact |
 | Red | **Small test** | The new test adds at most ~15 lines. | exact |
-| Red | **Fails for the right reason** | It fails on its assertion (expected vs actual), not on a compile error, import error or crash. | exact where the runner tells, else judge |
+| Red | **Fails for the right reason** | It fails on its assertion (expected vs actual). A compile error only means the stub is still missing (Red in progress); an import error, broken setup or crash is the wrong reason. | exact where the runner tells, else judge |
 | Red | **One behaviour per test** | All its assertions check one outcome. | judge |
 | Green | **Transformation** | Which [TPP](https://blog.cleancoder.com/uncle-bob/2013/05/27/TheTransformationPriorityPremise.html) step was applied: {}→Nil, Nil→Constant, Constant→Variable, Unconditional→Selection, Value→List, Selection→Iteration, Statement→Recursion, Value→Mutated Value. | judge |
 | Green | **Simplest change** | The change is no bigger than the failing test needed. | judge |
@@ -192,7 +202,8 @@ Exact rules come first. The judge only answers what they can't decide.
 | Refactor | **Tests stayed green** | Every test kept passing. | exact |
 | Refactor | **Behaviour unchanged** | Only structure changed. | judge |
 | Refactor | **Design effect** | The code got easier to read or change (or not). | judge |
-| Red after Green | **Refactor after Green** | The last Green is reviewed through five lenses (code smells, Clean Code, domain design, Pragmatic Programmer, module design); if something is worth cleaning up, the hint names it. | judge |
+| After Green | **Refactor now** | The new code is reviewed through five lenses (code smells, Clean Code, domain design, Pragmatic Programmer, module design). If something is worth cleaning up, the hint names it, and it is re-checked on every green save until resolved. | judge |
+| Next Red | **Refactor after Green** | Did you start the next test with a *Refactor now* problem still unresolved? | from the re-checks |
 | any | **Cycle rhythm** | Several new tests at once; a test that passes without failing first; code written without a failing test; a test edited during Green; an existing test breaking. | exact |
 
 Every verdict is advisory. The judge answers only when it is at least 80% sure (45% for "simplest change"). Anything less is marked **uncertain**: it is not shown during the session and is listed in the report.
@@ -215,13 +226,13 @@ It gives no scores.
 
 > | Duration | Cycles | Tests added | Clean cycles |
 > |---|---|---|---|
-> | 1m25s | 5 | 6 | 3 of 5 (60%) |
+> | 1m32s | 5 | 6 | 1 of 5 (20%) |
 >
 > **Focus tips**
 >
-> 1. **Refactor after Green** (2×): The last Green (step 9) left something to refactor: special-case code mixed into general code, and magic numbers or strings. Clean it up before the next Red (tddt show 9).
-> 2. **Cycle rhythm** (1×): Several new tests in one step: write one failing test at a time.
-> 3. **No test-specific code** (1×): The code special-cases the test's inputs: generalise instead of matching test values.
+> 1. **Refactor after Green** (2×): You started this test without cleaning up after step 9: special-case code mixed into general code, and magic numbers or strings. Refactor once this test passes (tddt show 9).
+> 2. **Refactor now** (2×): Worth refactoring now, while the tests are green: special-case code mixed into general code, and magic numbers or strings. The hint updates as you refactor (tddt show 9).
+> 3. **Cycle rhythm** (1×): Several new tests in one step: write one failing test at a time.
 >
 > **Transformation path**
 >
@@ -280,13 +291,13 @@ slow_run_warning: 5s
 
 ```mermaid
 flowchart LR
-  save[file saved] --> run[run build + tests]
-  run --> snap[snapshot into .tddtrainer/]
-  snap --> steps[infer step: Red / Green / Refactor]
-  steps --> exact[exact checks]
-  steps --> queue[judge queue]
-  queue --> model[local model]
-  exact --> ui[TUI / report]
+  save["file saved"] --> run["run build and tests"]
+  run --> snap["snapshot in .tddtrainer"]
+  snap --> steps["infer the step: Red, Green or Refactor"]
+  steps --> exact["exact checks"]
+  steps --> queue["judge queue"]
+  queue --> model["local model"]
+  exact --> ui["TUI and report"]
   model --> ui
 ```
 
@@ -297,4 +308,4 @@ flowchart LR
 
 ## Licence
 
-MIT, see [LICENSE](LICENSE). The release archives also contain llama.cpp (MIT) and, on Windows, the Microsoft VC++ runtime DLLs. The judge model is Apache-2.0.
+MIT, see [LICENSE](LICENSE). `tddt setup` downloads llama.cpp (MIT) and the judge model (Apache-2.0).
