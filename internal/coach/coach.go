@@ -272,7 +272,9 @@ func (c *Coach) Step(s steps.Step) error {
 		} else {
 			c.enqueue(&job{prio: prioRedCheck, step: s.N, kind: s.Kind, ev: ev, gates: []string{"red-check"}, finish: finishRedCheck})
 		}
-		c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
+		if len(s.NewTests) == 1 { // several new tests are already an anomaly
+			c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
+		}
 		if s.AfterGreen {
 			c.mu.Lock()
 			diff, green := c.lastGreenDiff, c.lastGreenStep

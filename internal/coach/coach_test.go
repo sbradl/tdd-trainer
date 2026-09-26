@@ -212,7 +212,7 @@ func TestKataReplay(t *testing.T) {
 		"6 Red anomaly:warning", "6 Red red-check:ok",
 		// judge verdicts by priority: red-check, Red, Green, Refactor, lenses
 		"3 Red red-check:ok",
-		"1 Red one-behaviour:ok", "3 Red one-behaviour:ok", "6 Red one-behaviour:ok",
+		"1 Red one-behaviour:ok", "3 Red one-behaviour:ok",
 		"2 Green tpp:ok", "2 Green step-size:ok", "2 Green multi:ok", "2 Green cheating:ok",
 		"4 Green tpp:ok", "4 Green step-size:hint", "4 Green multi:ok", "4 Green cheating:ok",
 		"5 Refactor structural:ok", "5 Refactor refactor-effect:ok",
@@ -371,12 +371,28 @@ func TestMissedRefactorSaysWhatToRefactor(t *testing.T) {
 	if hint == nil || hint.Level != Hint || hint.Step != 3 {
 		t.Fatalf("got %+v", hint)
 	}
-	for _, want := range []string{"step 2", "tddt show 2", "Duplicated code", "(code smells)"} {
+	for _, want := range []string{"step 2", "tddt show 2", "Duplicated code"} {
 		if !strings.Contains(hint.Text, want) {
 			t.Errorf("hint %q misses %q", hint.Text, want)
 		}
 	}
 	if !strings.Contains(sc.evidence["review-smells~which"], `+func Roman(n int) string { return "I" }`) {
 		t.Errorf("which-probe evidence:\n%s", sc.evidence["review-smells~which"])
+	}
+}
+
+func TestMissedRefactorHintKeepsTheClearestTwo(t *testing.T) {
+	w := func(top, answer string, p float64) judge.Verdict {
+		return judge.Verdict{Top: top, Answer: answer, P: p}
+	}
+	v := missedRefactorHint(9, []string{"review-clean-code", "review-philosophy", "review-pragmatic", "review-smells"}, map[string]judge.Verdict{
+		"review-clean-code~which": w("magic", "magic", 0.7),
+		"review-philosophy~which": w("special-case", "special-case", 0.9),
+		"review-pragmatic~which":  w("dry", "dry", 0.6),
+		"review-smells~which":     w("duplicated", judge.Uncertain, 0.4),
+	}, 0.9)
+	want := "The last Green (step 9) left something to refactor: special-case code mixed into general code, and magic numbers or strings. Clean it up before the next Red (tddt show 9)."
+	if v.Text != want {
+		t.Fatalf("got  %q\nwant %q", v.Text, want)
 	}
 }

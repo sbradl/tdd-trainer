@@ -219,7 +219,7 @@ func Render(h app.History, pending int, d Differ) string {
 	for _, r := range h.Steps {
 		for _, v := range r.Verdicts {
 			if v.Check == "tpp" && v.Level == coach.OK && v.Text != "" && v.Text != "no production code changed" {
-				path = append(path, fmt.Sprintf("%d: %s", r.Step.N, v.Text))
+				path = append(path, fmt.Sprintf("%d: %s", r.Step.N, strings.TrimSuffix(strings.TrimPrefix(v.Text, "Applied "), ".")))
 			}
 		}
 	}

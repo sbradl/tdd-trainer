@@ -178,7 +178,7 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 				warnedExitCode = true
 				printf("%s\n", exitCodeOnlyWarning)
 			}
-			printf("%s (%.1fs)\n", e.Outcome.State, e.Duration.Seconds())
+			printf("tests (%.1fs): %s\n", e.Duration.Seconds(), e.Outcome.State)
 		case steps.Event:
 			mu.Lock()
 			printStepEvent(out, e)
@@ -242,7 +242,7 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 			line += " [" + a.String() + "]"
 		}
 		if s.AfterGreen {
-			line += " [no refactor after the last Green]"
+			line += " (directly after a Green: checking for a missed refactor)"
 		}
 		fmt.Fprintln(out, line)
 	}

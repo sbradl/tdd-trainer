@@ -2,6 +2,7 @@ package coach
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sbradl/tdd-trainer/internal/judge"
@@ -80,8 +81,10 @@ func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
 			out = append(out, gateVerdict(size, Hint, fmt.Sprintf(
 				"A simpler change would have done: the test only needed a %s change, the code made a %s one (%s).",
 				size.Answer, bandName[band[tpp.Answer]], c.tppLabel(tpp.Answer))))
+		case band[tpp.Answer] < sizeBand[size.Answer]:
+			out = append(out, gateVerdict(size, OK, fmt.Sprintf("The code made a %s change where the test seemed to need a %s one: check that it really generalises.", bandName[band[tpp.Answer]], size.Answer)))
 		default:
-			out = append(out, gateVerdict(size, OK, fmt.Sprintf("The test needed a %s change and the code made a %s one: no bigger than necessary.", size.Answer, bandName[band[tpp.Answer]])))
+			out = append(out, gateVerdict(size, OK, fmt.Sprintf("The test needed a %s change and the code made one: no bigger than necessary.", size.Answer)))
 		}
 	}
 
@@ -166,31 +169,63 @@ func (c *Coach) finishLenses(red steps.Step, green int, ev judge.Evidence, vs ma
 
 // missedRefactorHint names the problem each firing lens sees most clearly.
 func missedRefactorHint(green int, lenses []string, which map[string]judge.Verdict, p float64) Verdict {
-	var problems []string
+	type problem struct {
+		desc, lens string
+		p          float64
+		sure       bool
+	}
+	var ps []problem
 	seen := map[string]bool{}
 	for _, name := range lenses {
 		w := which[name+"~which"]
-		desc := ""
 		for _, o := range judge.LensProblems[name] {
-			if o.ID == w.Top {
-				desc = o.Desc
+			if o.ID == w.Top && !seen[o.Desc] {
+				seen[o.Desc] = true
+				ps = append(ps, problem{o.Desc, lensTitle[name], w.P, w.Answer != judge.Uncertain})
 			}
 		}
-		if desc == "" || seen[desc] {
-			continue
-		}
-		seen[desc] = true
-		if w.Answer == judge.Uncertain {
-			desc = "probably " + lowerFirst(desc)
-		}
-		problems = append(problems, desc+" ("+lensTitle[name]+")")
 	}
+	// the clearest problems first; two are enough to act on
+	sort.SliceStable(ps, func(i, j int) bool {
+		if ps[i].sure != ps[j].sure {
+			return ps[i].sure
+		}
+		return ps[i].p > ps[j].p
+	})
+	if len(ps) > 2 {
+		ps = ps[:2]
+	}
+	if len(ps) == 2 && ps[0].sure && !ps[1].sure {
+		ps = ps[:1]
+	}
+
 	where := "The last Green"
 	if green > 0 {
-		where = fmt.Sprintf("The last Green (step %d, see tddt show %d)", green, green)
+		where = fmt.Sprintf("The last Green (step %d)", green)
+	}
+	var what string
+	switch len(ps) {
+	case 0:
+		what = "something to refactor."
+	case 1:
+		what = "something to refactor. " + ps[0].desc
+		if !ps[0].sure {
+			what = "something to refactor, probably: " + lowerFirst(ps[0].desc)
+		}
+	default:
+		var names []string
+		for _, x := range ps {
+			short, _, _ := strings.Cut(x.desc, ":")
+			names = append(names, lowerFirst(strings.TrimSuffix(short, ".")))
+		}
+		what = "something to refactor: " + strings.Join(names, ", and ") + "."
+	}
+	show := ""
+	if green > 0 {
+		show = fmt.Sprintf(" (tddt show %d)", green)
 	}
 	return Verdict{Check: "missed refactor", Level: Hint, P: p, Text: fmt.Sprintf(
-		"%s left something to refactor: %s Refactor before the next Red.", where, strings.Join(problems, " "))}
+		"%s left %s Clean it up before the next Red%s.", where, what, show)}
 }
 
 func lowerFirst(s string) string {

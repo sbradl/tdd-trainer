@@ -117,7 +117,14 @@ func (s TestState) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d failing:", len(s.Failing))
 	for _, f := range s.Failing {
-		fmt.Fprintf(&b, "\n  %s (%s)", f.ID, f.Reason)
+		switch f.Reason {
+		case ReasonAssertion:
+			fmt.Fprintf(&b, "\n  %s (fails on its assertion)", f.ID)
+		case ReasonWrong:
+			fmt.Fprintf(&b, "\n  %s (errors before its assertion)", f.ID)
+		default:
+			fmt.Fprintf(&b, "\n  %s", f.ID)
+		}
 	}
 	return b.String()
 }
