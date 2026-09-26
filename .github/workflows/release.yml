@@ -43,12 +43,22 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          path: dist
           merge-multiple: true
-      - run: sha256sum tddt-* > SHA256SUMS
+      - run: cd dist && sha256sum tddt-* > SHA256SUMS
+      # release notes: the tag's section of CHANGELOG.md ("## v1.2.3 …" up to the next "## ")
+      - name: release notes
+        run: |
+          awk -v tag="${{ github.ref_name }}" '
+            /^## / { if (found) exit; if ($2 == tag) { found = 1; next } }
+            found' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "CHANGELOG.md has no section for ${{ github.ref_name }}"; exit 1; }
       - uses: softprops/action-gh-release@v2
         with:
+          body_path: notes.md
           files: |
-            tddt-*
-            SHA256SUMS
+            dist/tddt-*
+            dist/SHA256SUMS

@@ -306,6 +306,10 @@ flowchart LR
 - **Judge:** it follows [SemIf](https://github.com/TheoLeeCJ/SemIf)'s direct mode. Each check is a multiple-choice question. One forward pass of the model gives the probability of each answer letter, and no text is generated. The model stays loaded, and checks that share the same evidence reuse the computed prompt prefix.
 - **Regression suite:** the questions are tuned against labelled fixtures in six languages. Run `tddt judge --regress` to see how the judge does on your machine: 92 of 101 fixtures are answered confidently and correctly, and none confidently wrong, on both CPU and GPU.
 
+## Changes
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). `tddt setup` downloads llama.cpp (MIT) and the judge model (Apache-2.0).
