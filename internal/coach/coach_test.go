@@ -233,6 +233,13 @@ func TestKataReplay(t *testing.T) {
 	if !strings.Contains(ev["step-size"], "=== Current source ===\npackage kata\n\nfunc Roman(n int) string { return \"I\" }") {
 		t.Errorf("step-size must see the source before Green:\n%s", ev["step-size"])
 	}
+	// the smallest change must keep the other tests green, so step-size
+	// sees them all (a new-test-only view suggested "change the literal")
+	for _, g := range []string{"step-size", "cheating"} {
+		if !strings.Contains(ev[g], "func TestOne") || !strings.Contains(ev[g], "func TestTwo") {
+			t.Errorf("%s must see all tests:\n%s", g, ev[g])
+		}
+	}
 	if !strings.Contains(ev["tpp"], "+\tfor i := 0; i < n; i++ {") || strings.Contains(ev["tpp"], "func Test") {
 		t.Errorf("tpp evidence:\n%s", ev["tpp"])
 	}

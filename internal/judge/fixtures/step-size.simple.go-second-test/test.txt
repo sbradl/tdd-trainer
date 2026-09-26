@@ -1,0 +1,22 @@
+package kata
+
+import (
+	"testing"
+)
+
+func TestRoman(t *testing.T) {
+	n := 1
+	want := "I"
+
+	r := Roman(n)
+
+	if r != want {
+		t.Errorf("invalid")
+	}
+}
+
+func TestRoman2(t *testing.T) {
+	if Roman(2) != "II" {
+		t.Errorf("invalid")
+	}
+}

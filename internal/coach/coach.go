@@ -69,7 +69,9 @@ type Coach struct {
 }
 
 type redEvidence struct {
-	test, transcript, source string
+	// allTests: every test file at the end of the Red. step-size and
+	// cheating need the other tests too: the change must keep them green.
+	allTests, transcript, source string
 }
 
 // New creates a coach; emit receives verdicts from any goroutine.
@@ -244,12 +246,16 @@ func (c *Coach) Step(s steps.Step) error {
 			judge.PartTest:       addedLines(testDiff),
 			judge.PartTranscript: transcript(s),
 		}
-		source, err := c.sourceText(s.To)
+		source, err := c.filesText(s.To, config.Source)
+		if err != nil {
+			return err
+		}
+		allTests, err := c.filesText(s.To, config.Test)
 		if err != nil {
 			return err
 		}
 		c.mu.Lock()
-		c.lastRed = &redEvidence{test: ev[judge.PartTest], transcript: ev[judge.PartTranscript], source: source}
+		c.lastRed = &redEvidence{allTests: allTests, transcript: ev[judge.PartTranscript], source: source}
 		c.mu.Unlock()
 
 		if allAssertions(s) {
@@ -280,7 +286,7 @@ func (c *Coach) Step(s steps.Step) error {
 		ev := judge.Evidence{judge.PartDiff: sourceDiff}
 		gates := []string{"tpp", "multi"}
 		if red != nil {
-			ev[judge.PartTest] = red.test
+			ev[judge.PartTest] = red.allTests
 			ev[judge.PartTranscript] = red.transcript
 			ev[judge.PartSource] = red.source
 			gates = append(gates, "cheating", "step-size")
@@ -310,8 +316,10 @@ var anomalyText = map[steps.Anomaly]string{
 	steps.BrokeExistingTest: "A test that passed before is failing now: undo the last change or get back to green first.",
 }
 
-func (c *Coach) sourceText(id snapshot.ID) (string, error) {
-	files, err := c.store.Files(id, config.Source)
+// filesText joins the snapshot's files of one kind, with a header per
+// file when there are several.
+func (c *Coach) filesText(id snapshot.ID, kind config.FileKind) (string, error) {
+	files, err := c.store.Files(id, kind)
 	if err != nil {
 		return "", err
 	}

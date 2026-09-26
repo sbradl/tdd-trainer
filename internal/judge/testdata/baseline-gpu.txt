@@ -67,6 +67,7 @@ step-size.constant.go-extend-literal         expect=constant       got=constant 
 step-size.constant.go-stub-literal           expect=constant       got=constant       p=0.558 ok
 step-size.simple.fizz                        expect=simple         got=simple         p=0.759 ok
 step-size.simple.go-key-decides              expect=simple         got=simple         p=0.554 ok
+step-size.simple.go-second-test              expect=simple         got=simple         p=0.602 ok
 step-size.simple.go-state-and-branch         expect=simple         got=simple         p=0.489 ok
 step-size.simple.lua-fizz                    expect=simple         got=simple         p=0.636 ok
 structural.no                                expect=no             got=no             p=0.998 ok
@@ -94,4 +95,4 @@ tpp.selection.ex-clause                      expect=selection      got=selection
 tpp.selection.ts-guard                       expect=selection      got=selection      p=0.899 ok
 tpp.variable                                 expect=variable       got=variable       p=0.986 ok
 tpp.variable.cs-greet                        expect=variable       got=variable       p=0.989 ok
-86/95 confident and correct, 0 confident and wrong, 9 uncertain  
+87/96 confident and correct, 0 confident and wrong, 9 uncertain  

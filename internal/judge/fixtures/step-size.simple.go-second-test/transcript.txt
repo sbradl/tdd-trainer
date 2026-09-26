@@ -1,0 +1,3 @@
+=== RUN   TestRoman2
+    roman_test.go:20: invalid
+--- FAIL: TestRoman2 (0.00s)
