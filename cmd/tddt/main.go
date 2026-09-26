@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -19,8 +20,10 @@ import (
 	"github.com/sbradl/tdd-trainer/internal/coach"
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/judge"
+	"github.com/sbradl/tdd-trainer/internal/report"
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
+	"github.com/sbradl/tdd-trainer/internal/snapshot"
 	"github.com/sbradl/tdd-trainer/internal/steps"
 	"github.com/sbradl/tdd-trainer/internal/tui"
 )
@@ -28,6 +31,7 @@ import (
 const usage = `usage:
   tddt [--once] [--no-judge] [--cpu] [dir] watch the project in dir (default .)
   tddt init [--preset NAME] [--yes] [dir]  write .tddtrainer.yml
+  tddt show STEP [dir]                     print a step of the last session with its full diff
   tddt judge --regress [--cpu] [--gate G]  check the judge against its fixtures
 `
 
@@ -43,6 +47,9 @@ func main() {
 func run(args []string, in io.Reader, out io.Writer) error {
 	if len(args) > 0 && args[0] == "init" {
 		return cmdInit(args[1:], in, out)
+	}
+	if len(args) > 0 && args[0] == "show" {
+		return cmdShow(args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "judge" {
 		return cmdJudge(args[1:], out)
@@ -129,7 +136,7 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 		}
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		p = tea.NewProgram(tui.New(controller{a}, status), tea.WithAltScreen(), tea.WithContext(ctx))
+		p = tea.NewProgram(tui.New(controller{a, dir}, status), tea.WithAltScreen(), tea.WithContext(ctx))
 		go func() {
 			a.Run(ctx)
 			p.Quit()
@@ -138,7 +145,7 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 		if errors.Is(err, tea.ErrProgramKilled) || errors.Is(err, context.Canceled) {
 			err = nil
 		}
-		return err
+		return errors.Join(err, finish(a, dir, out))
 	}
 
 	var mu sync.Mutex
@@ -186,7 +193,23 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 		return err
 	}
 	printf("Watching (%s); Ctrl-C to quit.\n", status)
-	return a.Run(ctx)
+	err = a.Run(ctx)
+	return errors.Join(err, finish(a, dir, out))
+}
+
+// finish writes the session report and prints the summary.
+func finish(a *app.App, dir string, out io.Writer) error {
+	h := a.History()
+	if len(h.Steps) == 0 {
+		return nil
+	}
+	pending := len(a.PendingGates())
+	path, err := report.Write(dir, h, pending, a.Store())
+	if err != nil {
+		return fmt.Errorf("writing report: %w", err)
+	}
+	fmt.Fprint(out, report.Summary(h, pending, path))
+	return nil
 }
 
 func printStepEvent(out io.Writer, ev steps.Event) {
@@ -218,10 +241,46 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 }
 
 // controller adapts the app to the TUI's keys.
-type controller struct{ *app.App }
+type controller struct {
+	*app.App
+	dir string
+}
 
 func (c controller) WriteReport() (string, error) {
-	return "", errors.New("session report not implemented yet")
+	return report.Write(c.dir, c.History(), len(c.PendingGates()), c.Store())
+}
+
+func cmdShow(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("tddt show", flag.ContinueOnError)
+	fs.Usage = func() { fmt.Fprint(fs.Output(), usage) }
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 || fs.NArg() > 2 {
+		fs.Usage()
+		return errors.New("which step?")
+	}
+	n, err := strconv.Atoi(fs.Arg(0))
+	if err != nil {
+		return fmt.Errorf("step must be a number: %q", fs.Arg(0))
+	}
+	dir := "."
+	if fs.NArg() == 2 {
+		dir = fs.Arg(1)
+	}
+	cfg, err := config.Load(dir)
+	if err != nil {
+		return err
+	}
+	h, _, err := app.LoadLatestSession(dir)
+	if err != nil {
+		return err
+	}
+	store, err := snapshot.Open(dir, cfg)
+	if err != nil {
+		return err
+	}
+	return report.Show(out, h, n, store)
 }
 
 func cmdInit(args []string, in io.Reader, out io.Writer) error {

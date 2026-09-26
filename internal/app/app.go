@@ -5,6 +5,12 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -44,7 +50,51 @@ type History struct {
 	Steps        []StepRecord
 	StartsRed    bool
 	ExitCodeOnly bool
-	LastState    *steps.Observation
+}
+
+// SessionsDir holds one JSON file per session, for `tddt show`.
+var SessionsDir = filepath.Join(snapshot.Dir, "sessions")
+
+// SessionFile is the history file of a session that started at start.
+func SessionFile(root string, start time.Time) string {
+	return filepath.Join(root, SessionsDir, start.Format("2006-01-02T15-04-05")+".json")
+}
+
+// LoadLatestSession reads the newest session file under root.
+func LoadLatestSession(root string) (History, string, error) {
+	files, _ := filepath.Glob(filepath.Join(root, SessionsDir, "*.json"))
+	if len(files) == 0 {
+		return History{}, "", errors.New("no session recorded yet")
+	}
+	sort.Strings(files)
+	path := files[len(files)-1]
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return History{}, "", err
+	}
+	var h History
+	err = json.Unmarshal(data, &h)
+	return h, path, err
+}
+
+// save writes the history for `tddt show`; errors are reported, not fatal.
+func (a *App) save() {
+	a.saveMu.Lock() // the newest history must be written last
+	defer a.saveMu.Unlock()
+	h := a.History()
+	data, err := json.MarshalIndent(h, "", "  ")
+	if err == nil {
+		path := SessionFile(a.dir, h.Start)
+		if err = os.MkdirAll(filepath.Dir(path), 0o755); err == nil {
+			// write then rename, so `tddt show` never reads half a file
+			if err = os.WriteFile(path+".tmp", data, 0o644); err == nil {
+				err = os.Rename(path+".tmp", path)
+			}
+		}
+	}
+	if err != nil {
+		a.sink(ErrorMsg{fmt.Errorf("saving session: %w", err)})
+	}
 }
 
 type App struct {
@@ -56,6 +106,7 @@ type App struct {
 	coach *coach.Coach
 
 	trigger chan []string // manual reruns
+	saveMu  sync.Mutex
 
 	mu      sync.Mutex
 	machine *steps.Machine
@@ -181,7 +232,6 @@ func (a *App) event(e session.Event) {
 		}
 	}
 	a.prev = done.Snapshot
-	a.hist.LastState = &obs
 	a.hist.ExitCodeOnly = a.hist.ExitCodeOnly || done.Outcome.ExitCodeOnly
 	evs := a.machine.Observe(obs)
 	phase := a.machine.Phase()
@@ -199,13 +249,18 @@ func (a *App) event(e session.Event) {
 	if diffErr != nil {
 		a.sink(ErrorMsg{diffErr})
 	}
+	stepped := false
 	for _, ev := range evs {
 		a.sink(ev)
 		if sd, ok := ev.(steps.StepDone); ok {
+			stepped = true
 			if err := a.coach.Step(sd.Step); err != nil {
 				a.sink(ErrorMsg{err})
 			}
 		}
+	}
+	if stepped {
+		a.save()
 	}
 	a.sink(PhaseMsg{phase})
 }
@@ -217,6 +272,9 @@ func (a *App) verdict(v coach.Verdict) {
 	}
 	a.mu.Unlock()
 	a.sink(v)
+	if !v.Exact {
+		a.save() // exact verdicts are saved with their step
+	}
 }
 
 // Override sets the phase by hand (hotkeys r/g/f).
