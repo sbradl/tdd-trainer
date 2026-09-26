@@ -1,0 +1,19 @@
+package roman
+
+import "testing"
+
+func TestRoman(t *testing.T) {
+	cases := []struct {
+		n    int
+		want string
+	}{
+		{1, "I"},
+		{2, "II"},
+		{4, "IV"},
+	}
+	for _, c := range cases {
+		if got := Roman(c.n); got != c.want {
+			t.Errorf("Roman(%d) = %q, want %q", c.n, got, c.want)
+		}
+	}
+}

@@ -291,14 +291,15 @@ func problemText(lenses []string, which map[string]judge.Verdict) (string, []str
 
 // where names the production files a hint is about, so nobody looks for
 // the problem in the tests.
-func where(files []string) string {
+func where(files []string) string { return fileNames(files, "the production code") }
+
+// fileNames names one or two files, else the fallback.
+func fileNames(files []string, fallback string) string {
 	switch len(files) {
-	case 0:
-		return "the production code"
 	case 1:
 		return files[0]
 	case 2:
 		return files[0] + " and " + files[1]
 	}
-	return "the production code"
+	return fallback
 }

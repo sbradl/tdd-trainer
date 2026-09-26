@@ -205,7 +205,8 @@ Exact rules come first. The judge only answers what they can't decide.
 | Refactor | **Behaviour unchanged** | Only structure changed. | judge |
 | Refactor | **Design effect** | The code got easier to read or change (or not). | judge |
 | After Green | **Refactor now** | The new code is reviewed through four lenses (code smells, Clean Code, Pragmatic Programmer, module design). If something is worth cleaning up, the hint names it, and it is re-checked on every green save until resolved. | judge |
-| Next Red | **Refactor after Green** | Did you start the next test with a *Refactor now* problem still unresolved? | from the re-checks |
+| After Green | **Refactor tests now** | The test code is reviewed too, with its own checks (literals and repeated values are normal in tests): test bodies that repeat the same steps, names that don't say the behaviour, expected values computed instead of stated, failures without expected and actual. Re-checked on every green save that changes tests. | judge |
+| Next Red | **Refactor after Green** | Did you start the next test with a *Refactor now* or *Refactor tests now* problem still unresolved? | from the re-checks |
 | On request | **Next test** | Which kind of test to write next: the first case of the ZOMBIES checklist (zero/empty, one, many, boundaries, errors) that no test covers yet, or "triangulate" right after a fake-it Green. Only asked for with `n` or `tddt next`; it never counts against a cycle. | judge |
 | any | **Cycle rhythm** | Several new tests at once; a test that passes without failing first; code written without a failing test; a test edited during Green; an existing test breaking. | exact |
 

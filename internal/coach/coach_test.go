@@ -242,7 +242,9 @@ func TestKataReplay(t *testing.T) {
 		"4 Green tpp:ok", "4 Green step-size:hint", "4 Green multi:ok", "4 Green cheating:ok",
 		// each Green is reviewed for refactoring; the next Red learns the result
 		"3 Red missed refactor:ok", "2 Green refactor opportunity:ok",
+		"3 Red missed test refactor:ok", "2 Green test refactor opportunity:ok",
 		"6 Red missed refactor:ok", "4 Green refactor opportunity:ok",
+		"6 Red missed test refactor:ok", "4 Green test refactor opportunity:ok",
 		"5 Refactor structural:ok", "5 Refactor refactor-effect:ok",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {

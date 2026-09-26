@@ -58,17 +58,18 @@ type Coach struct {
 	order  string       // tpp_order
 	emit   func(Verdict)
 
-	mu      sync.Mutex
-	queue   jobQueue
-	running *job
-	started time.Time
-	perGate time.Duration // running mean of judge time per gate
-	wake    chan struct{}
-	seq     int
-	lastRed *redEvidence
-	issue   *refactorIssue // what the last Green's review found
-	next    *nextState     // coverage of the current tests, for next-test hints
-	onNext  func(NextTest)
+	mu        sync.Mutex
+	queue     jobQueue
+	running   *job
+	started   time.Time
+	perGate   time.Duration // running mean of judge time per gate
+	wake      chan struct{}
+	seq       int
+	lastRed   *redEvidence
+	issue     *refactorIssue // what the last Green's review found
+	testIssue *testIssue     // what the last Green's test review found
+	next      *nextState     // coverage of the current tests, for next-test hints
+	onNext    func(NextTest)
 
 	lastN    int // the newest step, for pending gates not tied to one
 	lastKind steps.Kind
@@ -300,6 +301,7 @@ func (c *Coach) Step(s steps.Step) error {
 			c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
 		}
 		c.redStarted(s)
+		c.testRedStarted(s)
 		c.dropNext()
 
 	case steps.Green:
@@ -317,6 +319,9 @@ func (c *Coach) Step(s steps.Step) error {
 			}
 		}
 		c.reviewGreen(s, sourceDiff, files)
+		if err := c.reviewTests(s); err != nil {
+			return err
+		}
 		ev := judge.Evidence{judge.PartDiff: sourceDiff}
 		gates := []string{"tpp", "multi"}
 		if red != nil {

@@ -1,0 +1,11 @@
+defmodule WordCountTest do
+  use ExUnit.Case
+
+  test "counts a single word" do
+    assert WordCount.count("word") == %{"word" => 1}
+  end
+
+  test "counts a repeated word" do
+    assert WordCount.count("one one") == %{"one" => 2}
+  end
+end

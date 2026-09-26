@@ -153,6 +153,24 @@ var coverOptions = []Option{
 	{"na", "Not applicable: this case makes no sense for this problem."},
 }
 
+// TestSmell is one yes/no question of the test-code review; "yes" is a
+// problem worth refactoring. The code lenses don't fit tests: literals and
+// repeated values are normal there, and one specific question per smell
+// suits the judge better than one broad lens.
+type TestSmell struct{ ID, Problem, Question string }
+
+// TestSmells each have a "<id>" gate over all test files.
+var TestSmells = []TestSmell{
+	{"test-duplicated", "Duplicated test code: the same arrange or assert steps are repeated; a helper or a table of cases would remove them.",
+		"Look at the bodies of the tests. Do at least two test bodies have the same shape: the same statements in the same order, only with other values (for example the same if-check or the same setup lines)? A body that is a single call of a shared helper is no."},
+	{"test-names", "Unclear test names: a name doesn't say which behaviour the test checks.",
+		"Does any test have a name that doesn't say which behaviour it checks, such as test1, testIt, works, or just the function name with a number?"},
+	{"test-logic", "Logic in tests: a test computes its expected value, or decides it with loops or conditionals.",
+		"Does any test calculate its expected result with code (arithmetic, modulo, ternaries, string building) instead of writing it down as a literal? Loops over a fixed table of literal cases are no."},
+	{"test-message", "Silent failures: a failing assertion doesn't say what was expected and what came out.",
+		"Does any test signal failure without a message, for example Go's t.Fail() or t.FailNow() with no text, or assert(x) with no description? Framework assertions that print expected and actual themselves (assertEquals, expect(...).toBe, Assert.Equal, pytest's assert a == b, t.Errorf with both values) are no."},
+}
+
 // Gates holds every gate by name. Any change to a question or option must
 // be checked with `tddt judge --regress`.
 var Gates = map[string]Gate{}
@@ -188,6 +206,9 @@ func init() {
 			Question: "A reviewer found at least one of the problems listed in the options in this source diff. Which one does the diff show most clearly?"})
 		add(Gate{Name: name, Options: yesNo, Parts: []Part{PartDiff}, Clean: &clean,
 			Question: fmt.Sprintf("Does this source diff contain at least one of these problems? Lens: %s. Answer yes if any added code shows one of them, even a small instance.", focus)})
+	}
+	for _, t := range TestSmells {
+		add(Gate{Name: t.ID, Options: yesNo, Parts: []Part{PartTest}, Question: t.Question})
 	}
 	// "no" (a gap) turns into a hint, so it needs both probes.
 	for _, c := range Cases {

@@ -1,0 +1,10 @@
+import { expect, test } from "vitest";
+import { wrap } from "./wrap";
+
+test("test1", () => {
+  expect(wrap("", 5)).toBe("");
+});
+
+test("test2", () => {
+  expect(wrap("hello world", 5)).toBe("hello\nworld");
+});

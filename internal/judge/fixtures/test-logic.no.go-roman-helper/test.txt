@@ -1,0 +1,22 @@
+package kata
+
+import "testing"
+
+func TestOneIsI(t *testing.T) {
+	assertRoman(t, 1, "I")
+}
+
+func TestTwoIsII(t *testing.T) {
+	assertRoman(t, 2, "II")
+}
+
+func TestThreeIsIII(t *testing.T) {
+	assertRoman(t, 3, "III")
+}
+
+func assertRoman(t *testing.T, n int, want string) {
+	t.Helper()
+	if got := Roman(n); got != want {
+		t.Errorf("Roman(%d) = %q, want %q", n, got, want)
+	}
+}

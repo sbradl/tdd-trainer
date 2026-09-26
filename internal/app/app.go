@@ -272,10 +272,18 @@ func (a *App) event(e session.Event) {
 	if stepped {
 		a.save()
 	}
-	// While refactoring, every green save re-checks an open refactor hint.
-	if obs.State.Green() && obs.SourceChanged && phase == steps.PhaseRefactor {
-		if err := a.coach.Recheck(done.Snapshot); err != nil {
-			a.sink(ErrorMsg{err})
+	// While refactoring, every green save re-checks an open refactor hint:
+	// the code one when code changed, the test one when tests changed.
+	if obs.State.Green() && phase == steps.PhaseRefactor {
+		if obs.SourceChanged {
+			if err := a.coach.Recheck(done.Snapshot); err != nil {
+				a.sink(ErrorMsg{err})
+			}
+		}
+		if obs.TestsChanged {
+			if err := a.coach.RecheckTests(done.Snapshot); err != nil {
+				a.sink(ErrorMsg{err})
+			}
 		}
 	}
 	a.sink(PhaseMsg{phase})

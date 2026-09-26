@@ -1,0 +1,20 @@
+using Xunit;
+
+public class FizzBuzzTests
+{
+    [Fact]
+    public void OneSaysOne()
+    {
+        Assert.Equal("1", FizzBuzz.Say(1));
+    }
+
+    [Fact]
+    public void NumbersUpToFifteen()
+    {
+        for (var i = 1; i <= 15; i++)
+        {
+            var expected = i % 15 == 0 ? "FizzBuzz" : i % 3 == 0 ? "Fizz" : i % 5 == 0 ? "Buzz" : i.ToString();
+            Assert.Equal(expected, FizzBuzz.Say(i));
+        }
+    }
+}

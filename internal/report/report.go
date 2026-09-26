@@ -260,7 +260,7 @@ func Render(h app.History, pending int, d Differ) string {
 	n := 0
 	for _, r := range h.Steps {
 		for _, v := range r.Verdicts {
-			if v.Check == "anomaly" || (v.Check == "missed refactor" && v.Level == coach.Hint) {
+			if v.Check == "anomaly" || ((v.Check == "missed refactor" || v.Check == "missed test refactor") && v.Level == coach.Hint) {
 				fmt.Fprintf(&b, "- Step %d (%s): %s\n", r.Step.N, r.Step.Kind, v.Text)
 				n++
 			}
@@ -325,7 +325,7 @@ func snippets(b *strings.Builder, h app.History, c cycle, d Differ) {
 			if v.Level != coach.Hint && v.Level != coach.Warn {
 				continue
 			}
-			if v.Check == "missed refactor" {
+			if v.Check == "missed refactor" || v.Check == "missed test refactor" {
 				missed = true
 			} else {
 				own = true

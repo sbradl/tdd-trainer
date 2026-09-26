@@ -1,0 +1,5 @@
+from calculator import add
+
+
+def test_empty_string_adds_up_to_zero():
+    assert add("") == 0

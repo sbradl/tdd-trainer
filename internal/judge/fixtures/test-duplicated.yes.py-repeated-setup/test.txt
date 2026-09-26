@@ -1,0 +1,19 @@
+from cart import Cart, Item
+
+
+def test_empty_cart_costs_nothing():
+    cart = Cart(customer="alice", currency="EUR", created="2024-01-01", region="eu-west")
+    assert cart.total() == 0
+
+
+def test_one_item_costs_its_price():
+    cart = Cart(customer="alice", currency="EUR", created="2024-01-01", region="eu-west")
+    cart.add(Item(name="book", price=12))
+    assert cart.total() == 12
+
+
+def test_two_items_cost_their_sum():
+    cart = Cart(customer="alice", currency="EUR", created="2024-01-01", region="eu-west")
+    cart.add(Item(name="book", price=12))
+    cart.add(Item(name="pen", price=3))
+    assert cart.total() == 15
