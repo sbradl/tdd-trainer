@@ -216,8 +216,9 @@ func (m *Machine) Observe(o Observation) []Event {
 			}
 			slices.Sort(tests)
 			m.inProgress = nil
-			if len(tests) == 0 && !m.pending.tests {
-				// broke the build while refactoring, then fixed it
+			if len(tests) == 0 && !(m.pending.tests && m.pending.source) {
+				// broke the build while refactoring code or tests, then
+				// fixed it; a test filled in along with its code is not
 				m.refactored.add(m.pending)
 				m.pending = changes{}
 				return nil

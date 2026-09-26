@@ -10,6 +10,7 @@
 ### Fixes
 
 - **Filling in an existing test now starts a Red.** If you write an empty test first and give it its body later, the Red completes once the test fails on its assertion. Before, it stayed in "Red in progress" forever. A passing test you change so that it fails now counts as a Red too, not as a broken test, as long as you changed only test files.
+- **Refactoring tests no longer looks like a new test.** If a test refactoring broke the build for a moment (say, a half-written helper), fixing it gave the warning "a new or changed test passed without failing first". Now it counts as a refactoring.
 
 ### Reports
 

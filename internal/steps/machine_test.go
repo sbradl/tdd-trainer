@@ -263,6 +263,14 @@ func TestTransitions(t *testing.T) {
 			{"a b | a", "ts"},
 		}, "Baseline; Anomaly(broke)[s0→s1]"},
 
+		{"test refactoring that breaks the build for a moment is still refactor", []run{
+			{"a b |", ""},
+			{"broken", "t"},
+			{"a b |", "t"},
+			{"a b |", "t"},
+			{"a b c | c", "t"},
+		}, "Baseline; RedInProgress; Refactor[s0→s3]; Red(c)[s3→s4]"},
+
 		{"build broken during refactor then green is still refactor", []run{
 			{"a |", ""},
 			{"broken", "s"},
