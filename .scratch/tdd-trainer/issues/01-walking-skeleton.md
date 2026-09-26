@@ -1,6 +1,6 @@
 # Walking skeleton
 
-Status: ready-for-agent
+Status: done
 Blocked by: none
 Spec: ../spec.md (§2, §3)
 
