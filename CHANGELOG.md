@@ -2,6 +2,10 @@
 
 ## Upcoming version
 
+Nothing yet.
+
+## 2026-09-28
+
 ### Sessions
 
 - **`tddt --resume` continues the last session** after a restart (say, to update `tddt`). Step numbers go on, `tddt show` and the report cover the whole session, and the time `tddt` wasn't running doesn't count. If you were in a Red, the Green that follows is judged as usual; after a Green, its open hints come back and update as you refactor. Changes made while `tddt` was off count like a save.
