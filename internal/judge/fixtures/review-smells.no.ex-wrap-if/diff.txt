@@ -1,0 +1,15 @@
+diff --git a/lib/wrapper.ex b/lib/wrapper.ex
+index 7ce949c8701e21c1dd87e9f3f474a454205940c0..1107d87cacb85575f2fddc91c22b491140e681e4 100644
+--- a/lib/wrapper.ex
++++ b/lib/wrapper.ex
+@@ -1,3 +1,9 @@
+ defmodule Wrapper do
+-  def wrap(text, _width), do: text
++  def wrap(text, width) do
++    if String.length(text) <= width do
++      text
++    else
++      String.slice(text, 0, width) <> "\n" <> String.slice(text, width..-1//1)
++    end
++  end
+ end

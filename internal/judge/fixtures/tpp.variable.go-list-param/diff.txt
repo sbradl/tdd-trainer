@@ -1,0 +1,13 @@
+diff --git a/primes.go b/primes.go
+index a9d4d52099a01b7dec7aaefd522203a8d85a1a27..12663c142a8f295936e0193d99a673d1815b3e5c 100644
+--- a/primes.go
++++ b/primes.go
+@@ -3,7 +3,7 @@
+ // Factors returns the prime factors of n in ascending order.
+ func Factors(n int) []int {
+ 	if n > 1 {
+-		return []int{2}
++		return []int{n}
+ 	}
+ 	return nil
+ }

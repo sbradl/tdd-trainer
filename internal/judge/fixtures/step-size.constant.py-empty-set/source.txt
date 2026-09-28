@@ -1,0 +1,6 @@
+--- conftest.py
+
+--- life.py
+def next_generation(cells):
+    return None
+

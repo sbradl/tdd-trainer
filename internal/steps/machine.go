@@ -83,7 +83,8 @@ type Step struct {
 	TestsChanged, SourceChanged bool
 }
 
-// Event is one of StepDone, RedInProgress, Baseline or PhaseChanged.
+// Event is one of StepDone, RedInProgress, Baseline, PhaseChanged or
+// TestsFixed.
 type Event interface{ isEvent() }
 
 // StepDone: a step completed and can be judged.
@@ -94,6 +95,9 @@ type StepDone struct{ Step Step }
 type RedInProgress struct {
 	BuildBroken bool
 	Erroring    []results.Failure // new tests failing for the wrong reason
+	// Refactoring: the build broke while refactoring code, no test changed;
+	// not a new test but code to make compile again.
+	Refactoring bool
 }
 
 // Baseline: the session's starting point was (re)set. StartsRed warns that
@@ -106,10 +110,15 @@ type Baseline struct {
 // PhaseChanged: the learner overrode the phase.
 type PhaseChanged struct{ Phase Phase }
 
+// TestsFixed: the tests broken while refactoring pass again (Step is the
+// BrokeExistingTest anomaly); the refactoring goes on.
+type TestsFixed struct{ Step int }
+
 func (StepDone) isEvent()      {}
 func (RedInProgress) isEvent() {}
 func (Baseline) isEvent()      {}
 func (PhaseChanged) isEvent()  {}
+func (TestsFixed) isEvent()    {}
 
 type changes struct{ tests, source bool }
 
@@ -135,6 +144,13 @@ type Machine struct {
 	inProgress map[string]bool // tests being written in PhaseRedInProgress
 	startedRed bool            // baseline was red; its failures are not ours
 	brokeShown bool            // BrokeExistingTest already reported this Green
+	broke      int             // that anomaly's step while making a test pass, until green
+	// fixing tells that PhaseGreen only fixes a test broken while
+	// refactoring: back to green is back to refactoring, not a new Green.
+	fixing bool
+	// resumed: continued from an earlier session, whose test IDs are not
+	// known until the first run that reports them
+	resumed bool
 }
 
 func New() *Machine { return &Machine{} }
@@ -160,7 +176,7 @@ func (m *Machine) Observe(o Observation) []Event {
 	if st.BuildBroken {
 		if m.phase == PhaseRefactor {
 			m.phase = PhaseRedInProgress
-			return []Event{RedInProgress{BuildBroken: true}}
+			return []Event{RedInProgress{BuildBroken: true, Refactoring: !m.pending.tests}}
 		}
 		return nil // compile errors while writing a test or code are normal
 	}
@@ -182,18 +198,31 @@ func (m *Machine) Observe(o Observation) []Event {
 
 	switch m.phase {
 	case PhaseGreen:
+		if len(st.Failing) == 0 && m.fixing {
+			m.phase, m.fixing = PhaseRefactor, false
+			m.refactored.add(m.pending)
+			m.pending = changes{}
+			m.greenAt = o.Snapshot
+			return []Event{TestsFixed{Step: m.last.N}}
+		}
 		if len(st.Failing) == 0 {
 			s := Step{Kind: Green}
 			if m.pending.tests {
 				s.Anomalies = []Anomaly{TestEditedInGreen}
 			}
-			m.phase = PhaseRefactor
+			var evs []Event
+			if m.broke != 0 {
+				evs = append(evs, TestsFixed{Step: m.broke})
+			}
+			m.phase, m.broke = PhaseRefactor, 0
 			m.greenAt = o.Snapshot
-			return m.complete(o, s)
+			return append(evs, m.complete(o, s)...)
 		}
 		if len(broke) > 0 && !m.brokeShown {
 			m.brokeShown = true
-			return m.complete(o, Step{Kind: AnomalyStep, Anomalies: []Anomaly{BrokeExistingTest}})
+			evs := m.complete(o, Step{Kind: AnomalyStep, Anomalies: []Anomaly{BrokeExistingTest}})
+			m.broke = m.n
+			return evs
 		}
 		return nil
 
@@ -225,11 +254,17 @@ func (m *Machine) Observe(o Observation) []Event {
 			}
 			return m.complete(o, Step{Kind: AnomalyStep, NewTests: tests, Anomalies: []Anomaly{NewTestPassed}})
 		}
+		if len(candidates) == 0 && len(broke) > 0 && !m.startedRed && !m.pending.tests {
+			// it compiles again, but refactoring the code broke a test
+			m.phase, m.fixing, m.brokeShown = PhaseGreen, true, true
+			m.inProgress = nil
+			return m.complete(o, Step{Kind: AnomalyStep, Anomalies: []Anomaly{BrokeExistingTest}})
+		}
 		return m.maybeRed(o, candidates)
 
 	default: // PhaseRefactor
 		if len(broke) > 0 {
-			m.phase = PhaseGreen
+			m.phase, m.fixing = PhaseGreen, true
 			m.brokeShown = true
 			return m.complete(o, Step{Kind: AnomalyStep, Anomalies: []Anomaly{BrokeExistingTest}})
 		}
@@ -295,6 +330,8 @@ func (m *Machine) maybeRed(o Observation, candidates []results.Failure) []Event 
 	m.inProgress = nil
 	m.startedRed = false
 	m.brokeShown = false
+	m.fixing = false
+	m.broke = 0
 	return append(evs, m.complete(o, s)...)
 }
 
@@ -348,12 +385,28 @@ func (m *Machine) baseline(o Observation) []Event {
 	return []Event{Baseline{Snapshot: o.Snapshot, StartsRed: startsRed}}
 }
 
+// Resume continues after the steps of an earlier session: numbering goes
+// on, and the next observation is compared with the last step's end like
+// any save, so changes made meanwhile count as part of the cycle.
+func (m *Machine) Resume(done []Step) {
+	last := done[len(done)-1]
+	*m = Machine{started: true, n: last.N, last: &last, stepStart: last.To, resumed: true}
+	m.failing = failingSet(results.TestState{Failing: last.Failing})
+	if last.Kind == Red || slices.Contains(last.Anomalies, BrokeExistingTest) {
+		m.phase = PhaseGreen // its tests were failing
+		// a test broken while refactoring, not while making a new one pass
+		m.fixing = last.Kind != Red && len(done) > 1 && done[len(done)-2].Kind != Red
+		return
+	}
+	m.phase, m.greenAt = PhaseRefactor, last.To
+}
+
 // ResetBaseline makes the next observation the new baseline.
 func (m *Machine) ResetBaseline() { m.started = false }
 
 // Override sets the phase by hand; the next completed step is marked.
 func (m *Machine) Override(p Phase) []Event {
-	m.phase = p
+	m.phase, m.fixing = p, false
 	m.overridden = true
 	m.brokeShown = false
 	if p == PhaseGreen {
@@ -368,6 +421,9 @@ func (m *Machine) Override(p Phase) []Event {
 func (m *Machine) diffTests(st results.TestState) (added, removed []string) {
 	if st.BuildBroken {
 		return nil, nil
+	}
+	if st.Tests != nil && m.known == nil && m.resumed && !m.pending.tests {
+		return nil, nil // resumed: the tests existed, none were written since
 	}
 	if st.Tests == nil || m.known == nil {
 		for _, f := range st.Failing {

@@ -6,6 +6,7 @@ import (
 	"container/heap"
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -58,18 +59,20 @@ type Coach struct {
 	order  string       // tpp_order
 	emit   func(Verdict)
 
-	mu        sync.Mutex
-	queue     jobQueue
-	running   *job
-	started   time.Time
-	perGate   time.Duration // running mean of judge time per gate
-	wake      chan struct{}
-	seq       int
-	lastRed   *redEvidence
-	issue     *refactorIssue // what the last Green's review found
-	testIssue *testIssue     // what the last Green's test review found
-	next      *nextState     // coverage of the current tests, for next-test hints
-	onNext    func(NextTest)
+	mu           sync.Mutex
+	queue        jobQueue
+	running      *job
+	started      time.Time
+	perGate      time.Duration // running mean of judge time per gate
+	wake         chan struct{}
+	seq          int
+	lastRed      *redEvidence
+	issue        *refactorIssue // what the last Green's review found
+	testIssue    *testIssue     // what the last Green's test review found
+	greenIssue   *greenIssue    // the last Green's hints on its own change
+	greenPending snapshot.ID    // refactored code seen before the Green's verdicts
+	next         *nextState     // coverage of the current tests, for next-test hints
+	onNext       func(NextTest)
 
 	lastN    int // the newest step, for pending gates not tied to one
 	lastKind steps.Kind
@@ -265,7 +268,7 @@ func (c *Coach) Step(s steps.Step) error {
 		c.emit(Verdict{Step: s.N, Kind: s.Kind, Check: check, Level: l, Text: text, Exact: true})
 	}
 	for _, a := range s.Anomalies {
-		exact("anomaly", Warn, anomalyText[a])
+		c.emit(Verdict{Step: s.N, Kind: s.Kind, Check: "anomaly", Level: Warn, Text: anomalyText[a], Answer: a.String(), Exact: true})
 	}
 
 	switch s.Kind {
@@ -280,17 +283,9 @@ func (c *Coach) Step(s steps.Step) error {
 			judge.PartTest:       addedLines(testDiff),
 			judge.PartTranscript: transcript(s),
 		}
-		source, err := c.filesText(s.To, config.Source)
-		if err != nil {
+		if err := c.keepRed(s); err != nil {
 			return err
 		}
-		allTests, err := c.filesText(s.To, config.Test)
-		if err != nil {
-			return err
-		}
-		c.mu.Lock()
-		c.lastRed = &redEvidence{allTests: allTests, transcript: ev[judge.PartTranscript], source: source}
-		c.mu.Unlock()
 
 		if allAssertions(s) {
 			exact("red-check", OK, "It fails on its assertion (expected vs actual), so it proves the behaviour is missing.")
@@ -301,12 +296,14 @@ func (c *Coach) Step(s steps.Step) error {
 			c.enqueue(&job{prio: prioRed, step: s.N, kind: s.Kind, ev: ev, gates: []string{"one-behaviour"}, finish: finishOneBehaviour})
 		}
 		c.redStarted(s)
+		c.greenClosed()
 		c.testRedStarted(s)
 		c.dropNext()
 
 	case steps.Green:
 		c.mu.Lock()
 		red := c.lastRed
+		c.greenIssue, c.greenPending = nil, ""
 		c.mu.Unlock()
 		if strings.TrimSpace(sourceDiff) == "" {
 			exact("tpp", OK, "No production code changed.")
@@ -330,7 +327,19 @@ func (c *Coach) Step(s steps.Step) error {
 			ev[judge.PartSource] = red.source
 			gates = append(gates, "cheating", "step-size")
 		}
-		c.enqueue(&job{prio: prioGreen, step: s.N, kind: s.Kind, ev: ev, gates: gates, finish: c.finishGreen})
+		before, err := c.branchesAt(s.From)
+		if err != nil {
+			return err
+		}
+		after, err := c.branchesAt(s.To)
+		if err != nil {
+			return err
+		}
+		c.enqueue(&job{prio: prioGreen, step: s.N, kind: s.Kind, ev: ev, gates: gates, finish: func(vs map[string]judge.Verdict) []Verdict {
+			out := countCheating(c.finishGreen(vs), before, after)
+			c.greenHints(s, out, before)
+			return out
+		}})
 
 	case steps.Refactor:
 		exact("stayed green", OK, "All tests kept passing during the refactoring.")
@@ -353,6 +362,43 @@ var anomalyText = map[steps.Anomaly]string{
 	steps.CodeWithoutTest:   "Production code changed without a failing test: write the test first and watch it fail.",
 	steps.TestEditedInGreen: "A test was changed while making it pass: change tests in Red or Refactor, not in Green.",
 	steps.BrokeExistingTest: "A test that passed before is failing now: undo the last change or get back to green first.",
+}
+
+// keepRed remembers what the Green after the Red s is judged against.
+func (c *Coach) keepRed(s steps.Step) error {
+	source, err := c.filesText(s.To, config.Source)
+	if err != nil {
+		return err
+	}
+	allTests, err := c.filesText(s.To, config.Test)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	c.lastRed = &redEvidence{allTests: allTests, transcript: transcript(s), source: source}
+	c.mu.Unlock()
+	return nil
+}
+
+// FixedBreak resolves the warning of a BrokeExistingTest anomaly once the
+// tests pass again.
+func FixedBreak(step int) Verdict {
+	return Verdict{Step: step, Kind: steps.AnomalyStep, Check: "anomaly", Level: OK, Exact: true,
+		Answer: steps.BrokeExistingTest.String(), Text: "Resolved: all tests pass again; carry on refactoring."}
+}
+
+// IsBreakWarning tells a BrokeExistingTest warning, also as saved by
+// versions that did not record the anomaly with it.
+func IsBreakWarning(v Verdict) bool {
+	return v.Check == "anomaly" && v.Level == Warn &&
+		(v.Answer == steps.BrokeExistingTest.String() || v.Text == anomalyText[steps.BrokeExistingTest])
+}
+
+// branchesAt counts the branches on exact test values in the production
+// code at id.
+func (c *Coach) branchesAt(id snapshot.ID) (int, error) {
+	source, err := c.filesText(id, config.Source)
+	return exactValueBranches(source), err
 }
 
 // filesText joins the snapshot's files of one kind.
@@ -389,12 +435,37 @@ func split(diffs []snapshot.FileDiff) (test, source string, testAdded int) {
 		switch d.Kind {
 		case config.Test:
 			t.WriteString(d.Patch)
-			testAdded += d.Added
+			testAdded += testLines(d.Patch)
 		case config.Source:
 			s.WriteString(d.Patch)
 		}
 	}
 	return t.String(), s.String(), testAdded
+}
+
+// fileHeader matches lines that only declare a file's package, module or
+// imports; with blank lines they don't count towards a test's size.
+var fileHeader = regexp.MustCompile(`^\s*(package|import|using|namespace|from \S+ import|require|use|alias)\b`)
+
+// testLines counts the added lines of a test diff that are test code: not
+// blank, not package or import declarations (including a Go import block).
+func testLines(patch string) int {
+	n, inImports := 0, false
+	for _, l := range strings.Split(patch, "\n") {
+		if !strings.HasPrefix(l, "+") || strings.HasPrefix(l, "+++") {
+			continue
+		}
+		l = strings.TrimSpace(l[1:])
+		switch {
+		case inImports:
+			inImports = l != ")"
+		case l == "" || fileHeader.MatchString(l):
+			inImports = strings.HasPrefix(l, "import (")
+		default:
+			n++
+		}
+	}
+	return n
 }
 
 // addedLines extracts the added lines of a unified diff: the new test.

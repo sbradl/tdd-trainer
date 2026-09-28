@@ -39,9 +39,10 @@ func loadRef(t *testing.T) map[string]refRow {
 }
 
 // tunedGates changed their questions or options after the reference dump
-// (slice 12, checked with tddt judge --regress); their prompts no longer
-// match it by design.
-var tunedGates = map[string]bool{"tpp": true, "red-check": true, "one-behaviour": true, "structural": true, "review-pragmatic": true}
+// (slice 12 and the kata sessions, checked with tddt judge --regress);
+// their prompts no longer match it by design.
+var tunedGates = map[string]bool{"tpp": true, "red-check": true, "one-behaviour": true, "structural": true, "review-pragmatic": true, "cheating": true,
+	"review-smells": true, "review-clean-code": true, "review-philosophy": true}
 
 // probes lists the prompts of the untuned gates' fixtures that the
 // reference covers, keyed like the reference dump (lens clean probes get a
@@ -71,7 +72,7 @@ func probes(t *testing.T) map[string]string {
 func TestPromptsMatchPythonReference(t *testing.T) {
 	ref := loadRef(t)
 	ps := probes(t)
-	if len(ps) < 40 {
+	if len(ps) < 20 {
 		t.Errorf("only %d probes compared with the reference", len(ps))
 	}
 	for id, p := range ps {

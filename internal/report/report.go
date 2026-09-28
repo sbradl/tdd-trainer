@@ -74,7 +74,7 @@ type Stats struct {
 }
 
 func stats(h app.History, pending int) Stats {
-	s := Stats{Duration: h.End.Sub(h.Start).Round(time.Second), Pending: pending}
+	s := Stats{Duration: (h.End.Sub(h.Start) - h.Paused).Round(time.Second), Pending: pending}
 	tests := map[string]bool{}
 	for _, c := range cycles(h) {
 		if c.n == 0 {

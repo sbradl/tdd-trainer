@@ -58,7 +58,7 @@ var yesNo = []Option{{"yes", "Yes."}, {"no", "No."}}
 var TPPOptions = []Option{
 	{"nil", "{} -> Nil: a new function, method or file appears whose body only returns nil/null/None, a zero value, or nothing"},
 	{"constant", "Nil -> Constant: a nil/zero value or missing return becomes a literal, an existing literal is edited into another literal, or new code returns fixed literals; no variables, conditions or loops"},
-	{"variable", "Constant -> Variable: a literal is replaced, wholly or in part, by a variable, parameter, field, or a value computed from one (for example string concatenation or interpolation with a parameter); no new condition or loop"},
+	{"variable", "Constant -> Variable: a literal is replaced, wholly or in part, by a variable, parameter, field, or a value computed from one (for example string concatenation or interpolation with a parameter); no new condition or loop, or a function now returns its parameter (or puts it in the returned value) instead of a fixed literal"},
 	{"selection", "Unconditional -> Selection: split the execution path with an if, switch, guard, or a new function clause that matches a pattern or guard"},
 	{"list", "Value -> List: a single value becomes a list, array or other collection, for example returning [x] instead of x"},
 	{"iteration", "Selection -> Iteration: a condition becomes a loop, or a loop over a collection is added"},
@@ -186,13 +186,13 @@ func init() {
 	add(Gate{Name: "red-check", Options: yesNo, Parts: []Part{PartTest, PartTranscript},
 		Question: "Does the new test fail for the right reason: the test compiled, ran to its assertion and failed there, expected vs actual? Every other failure is the wrong reason: a build or compile error of any kind (including an undefined or missing symbol), a syntax or parse error, an import error, a crash in shared setup or fixtures, an exception such as NotImplementedError or a null reference raised before the assertion."})
 	add(Gate{Name: "cheating", Options: yesNo, Parts: []Part{PartTest, PartDiff},
-		Question: "Does the implementation special-case the specific test inputs beyond an acceptable fake-it step, for example branching on exact test values or a lookup table of expected outputs? Returning one literal for one test is acceptable fake-it."})
+		Question: "Does the implementation special-case the specific test inputs beyond an acceptable fake-it step, for example branching on exact test values (== -1, == \"RR\", == \"III\") or a lookup table of expected outputs? Returning one literal for one test is acceptable fake-it."})
 	add(Gate{Name: "tpp", Options: TPPOptions, Parts: []Part{PartDiff},
 		Question: "Which Transformation Priority Premise transformation does this source diff apply? Look at what the added lines do compared with the removed ones. If it applies several, pick the one latest in the list."})
 	add(Gate{Name: "multi", Options: yesNo, Parts: []Part{PartDiff},
 		Question: "Does this source diff apply two or more different Transformation Priority Premise transformations (for example a new condition and a new loop, or a new variable and a new collection)? A single transformation plus the minimal code it needs is no."})
 	add(Gate{Name: "one-behaviour", Options: yesNo, Parts: []Part{PartTest},
-		Question: "Does this new test check exactly one behaviour of the code under test? Answer yes only if all its assertions check one outcome of one call or scenario. Different inputs expecting different kinds of results, or several operations each with its own check, are more than one behaviour: answer no."})
+		Question: "Does this new test check exactly one behaviour of the code under test? Answer yes only if all its assertions check one outcome of one call or scenario. Several calls that only set up one scenario (for example several rolls, inserts or moves) followed by one check are one behaviour. Different inputs expecting different kinds of results, or several operations each with its own check, are more than one behaviour: answer no."})
 	add(Gate{Name: "refactor-effect", Options: refactorEffectOptions, Parts: []Part{PartDiff},
 		Question: "This diff is a refactoring: behaviour stays the same. How does it change the design and readability of the code?"})
 	add(Gate{Name: "structural", Options: yesNo, Parts: []Part{PartDiff},
@@ -205,7 +205,7 @@ func init() {
 		add(Gate{Name: name + "~which", Options: LensProblems[name], Parts: []Part{PartDiff}, Floor: 0.5,
 			Question: "A reviewer found at least one of the problems listed in the options in this source diff. Which one does the diff show most clearly?"})
 		add(Gate{Name: name, Options: yesNo, Parts: []Part{PartDiff}, Clean: &clean,
-			Question: fmt.Sprintf("Does this source diff contain at least one of these problems? Lens: %s. Answer yes if any added code shows one of them, even a small instance.", focus)})
+			Question: fmt.Sprintf("Does this source diff contain at least one of these problems? Lens: %s. Answer yes if added code clearly shows one of them. A literal returned to pass a first test (fake it) and a short function with one condition are no.", focus)})
 	}
 	for _, t := range TestSmells {
 		add(Gate{Name: t.ID, Options: yesNo, Parts: []Part{PartTest}, Question: t.Question})

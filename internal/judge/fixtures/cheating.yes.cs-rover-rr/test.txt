@@ -1,0 +1,24 @@
+using Xunit;
+
+namespace MarsRover;
+
+public class RoverTests
+{
+    [Fact]
+    public void StartsAtOriginFacingNorth()
+    {
+        Assert.Equal("0:0:N", new Rover().Execute(""));
+    }
+
+    [Fact]
+    public void TurnsRight()
+    {
+        Assert.Equal("0:0:E", new Rover().Execute("R"));
+    }
+
+    [Fact]
+    public void TurnsRightTwice()
+    {
+        Assert.Equal("0:0:S", new Rover().Execute("RR"));
+    }
+}

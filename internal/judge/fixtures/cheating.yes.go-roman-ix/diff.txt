@@ -1,0 +1,14 @@
+diff --git a/roman.go b/roman.go
+index 1a375f8..5c2e9d1 100644
+--- a/roman.go
++++ b/roman.go
+@@ -7,5 +7,9 @@ func Roman(n int) string {
+ 		return "IV"
+ 	}
+ 
++	if n == 9 {
++		return "IX"
++	}
++
+ 	return strings.Repeat("I", n)
+ }

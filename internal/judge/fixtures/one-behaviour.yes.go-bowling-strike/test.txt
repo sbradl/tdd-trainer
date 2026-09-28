@@ -1,0 +1,9 @@
+
+func TestOneStrike(t *testing.T) {
+	g := &Game{}
+	g.Roll(10)
+	g.Roll(3)
+	g.Roll(4)
+	rollMany(g, 16, 0)
+	assertScore(t, g, 24)
+}

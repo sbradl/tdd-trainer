@@ -1,0 +1,12 @@
+assert None == set()
+ +  where None = next_generation(set())
+ +    where set() = set()
+ +  and   set() = set()
+def test_empty_world_stays_empty():
+>       assert next_generation(set()) == set()
+E       assert None == set()
+E        +  where None = next_generation(set())
+E        +    where set() = set()
+E        +  and   set() = set()
+
+test_life.py:5: AssertionError

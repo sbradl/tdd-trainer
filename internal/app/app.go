@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/sbradl/tdd-trainer/internal/coach"
 	"github.com/sbradl/tdd-trainer/internal/config"
 	"github.com/sbradl/tdd-trainer/internal/judge"
+	"github.com/sbradl/tdd-trainer/internal/results"
 	"github.com/sbradl/tdd-trainer/internal/runner"
 	"github.com/sbradl/tdd-trainer/internal/session"
 	"github.com/sbradl/tdd-trainer/internal/snapshot"
@@ -36,6 +38,9 @@ type (
 	}
 	// ErrorMsg: something went wrong that does not end the session.
 	ErrorMsg struct{ Err error }
+	// ResumedMsg: the session continues an earlier one; History is what
+	// happened before, for the views to catch up.
+	ResumedMsg struct{ History History }
 )
 
 // StepRecord is a completed step with the verdicts it got so far.
@@ -51,6 +56,8 @@ type History struct {
 	StartsRed    bool
 	ExitCodeOnly bool
 	NextTests    []NextTestRecord `json:",omitempty"`
+	// Paused is the time between End and a resume: tddt was not running.
+	Paused time.Duration `json:",omitempty"`
 }
 
 // NextTestRecord is a next-test hint the learner asked for.
@@ -121,6 +128,10 @@ type App struct {
 	prev    snapshot.ID
 	hist    History
 	byStep  map[int]int // step N -> index in hist.Steps
+	resumed bool
+	// recheck: the next green run while refactoring re-checks open hints
+	// even without a change, e.g. the hints a resumed session re-opened
+	recheck bool
 }
 
 // New prepares a session in dir. jd may be nil.
@@ -139,6 +150,48 @@ func New(dir string, cfg config.Config, jd *judge.Lazy, sink func(any)) (*App, e
 	a.coach = coach.New(store, scorer, cfg.TPPOrder, a.verdict)
 	a.coach.SetNextTestSink(a.nextTest)
 	return a, nil
+}
+
+// Resume continues the latest session of the project instead of starting a
+// new one: its history, step numbers and open hints; changes made since
+// count like a save. Call it before Run. It reports false when there is no
+// session with steps to continue.
+func (a *App) Resume() (bool, error) {
+	h, _, err := LoadLatestSession(a.dir)
+	if err != nil || len(h.Steps) == 0 {
+		return false, nil
+	}
+	last := h.Steps[len(h.Steps)-1].Step
+	if _, err := a.store.Diff(last.To, last.To); err != nil {
+		return false, fmt.Errorf("the last session's snapshots are missing: %w", err)
+	}
+	var done []steps.Step
+	verdicts := map[int][]coach.Verdict{}
+	for _, r := range h.Steps {
+		done = append(done, r.Step)
+		verdicts[r.Step.N] = r.Verdicts
+	}
+	a.mu.Lock()
+	if !h.End.IsZero() {
+		h.Paused += time.Since(h.End)
+	}
+	a.hist, a.resumed, a.recheck = h, true, true
+	for i, r := range h.Steps {
+		a.byStep[r.Step.N] = i
+		// older versions left a broken test's warning after the fix
+		if i < len(h.Steps)-1 && slices.Contains(r.Step.Anomalies, steps.BrokeExistingTest) {
+			for _, v := range r.Verdicts {
+				if coach.IsBreakWarning(v) {
+					a.hist.Steps[i].Verdicts = coach.Upsert(a.hist.Steps[i].Verdicts, coach.FixedBreak(r.Step.N))
+				}
+			}
+		}
+	}
+	a.prev = last.To
+	a.machine.Resume(done)
+	a.mu.Unlock()
+	a.save() // with the warnings resolved above
+	return true, a.coach.Resume(done, verdicts)
 }
 
 // Store exposes the snapshots, e.g. for diffs in the report.
@@ -187,6 +240,9 @@ func (a *App) Run(ctx context.Context) error {
 			}
 			a.sink(JudgeMsg{Ready: true, GPU: e.GPU})
 		}()
+	}
+	if a.resumed {
+		a.sink(ResumedMsg{History: a.History()})
 	}
 	go a.coach.Run(ctx)
 	changes := make(chan []string)
@@ -241,7 +297,16 @@ func (a *App) event(e session.Event) {
 			obs.SourceChanged = obs.SourceChanged || d.Kind == config.Source
 		}
 	}
+	if a.prev == "" && !obs.State.Green() {
+		// A fresh kata folder with no tests yet (e.g. only go.mod) makes
+		// some runners fail; that is an empty start, not a Red in progress.
+		if tests, err := a.store.Files(done.Snapshot, config.Test); err == nil && len(tests) == 0 {
+			obs.State = results.TestState{}
+		}
+	}
 	a.prev = done.Snapshot
+	recheck := a.recheck
+	a.recheck = false
 	a.hist.ExitCodeOnly = a.hist.ExitCodeOnly || done.Outcome.ExitCodeOnly
 	evs := a.machine.Observe(obs)
 	phase := a.machine.Phase()
@@ -262,6 +327,10 @@ func (a *App) event(e session.Event) {
 	stepped := false
 	for _, ev := range evs {
 		a.sink(ev)
+		if f, ok := ev.(steps.TestsFixed); ok {
+			a.verdict(coach.FixedBreak(f.Step))
+			a.save()
+		}
 		if sd, ok := ev.(steps.StepDone); ok {
 			stepped = true
 			if err := a.coach.Step(sd.Step); err != nil {
@@ -275,7 +344,7 @@ func (a *App) event(e session.Event) {
 	// While refactoring, every green save re-checks an open refactor hint:
 	// the code one when code changed, the test one when tests changed.
 	if obs.State.Green() && phase == steps.PhaseRefactor {
-		if obs.SourceChanged {
+		if obs.SourceChanged || recheck {
 			if err := a.coach.Recheck(done.Snapshot); err != nil {
 				a.sink(ErrorMsg{err})
 			}

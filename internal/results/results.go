@@ -73,8 +73,8 @@ func (r FailReason) String() string {
 
 // Classify decides the fail reason from exact signals only: a JUnit
 // <error> is the wrong reason; an exception type, where the runner reports
-// one, tells assertions from other exceptions. Everything else is undecided;
-// e.g. pytest reports a NameError inside a test as <failure>.
+// one (or its failure text names one, as with pytest and ExUnit), tells
+// assertions from other exceptions. Everything else is undecided.
 func Classify(r Result) FailReason {
 	switch {
 	case r.Kind == KindError:

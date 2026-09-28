@@ -1,0 +1,5 @@
+from life import next_generation
+
+
+def test_empty_world_stays_empty():
+    assert next_generation(set()) == set()

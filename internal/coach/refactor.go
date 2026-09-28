@@ -41,6 +41,7 @@ func (c *Coach) reviewGreen(g steps.Step, diff string, files []string) {
 	c.mu.Lock()
 	c.issue = issue
 	c.mu.Unlock()
+	fake := c.fakeItOnly(g.To)
 	ev := judge.Evidence{judge.PartDiff: diff}
 	c.enqueue(&job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: ev, gates: judge.LensNames(),
 		finish: func(vs map[string]judge.Verdict) []Verdict {
@@ -61,6 +62,10 @@ func (c *Coach) reviewGreen(g steps.Step, diff string, files []string) {
 			}
 			c.enqueue(&job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: ev, gates: which,
 				finish: func(ws map[string]judge.Verdict) []Verdict {
+					found := dropFakeIt(found, ws, fake)
+					if len(found) == 0 {
+						return c.reviewed(issue, nil, "", nil, Verdict{Check: opportunity, Level: OK, Text: "Nothing worth refactoring in this Green."})
+					}
 					problem, problems := problemText(found, ws)
 					return c.reviewed(issue, found, problem, problems, Verdict{Check: opportunity, Level: Hint, P: maxP, Text: fmt.Sprintf(
 						"Worth refactoring %s now, while the tests are green: %s The hint updates as you refactor (tddt show %d).", issue.where, problem, g.N)})
@@ -94,8 +99,12 @@ func (c *Coach) reviewed(issue *refactorIssue, lenses []string, problem string, 
 // First it asks per problem whether the change removed it. If not all
 // surely are, the lenses that raised the hint look again at the Green's
 // net change (before the Green to now). Every recheck ends in a verdict
-// the learner sees. Only the newest recheck runs.
+// the learner sees. Only the newest recheck runs. Hints on the Green's
+// change itself (step size, test-specific code) are re-checked too.
 func (c *Coach) Recheck(now snapshot.ID) error {
+	if err := c.recheckGreen(now); err != nil {
+		return err
+	}
 	c.mu.Lock()
 	issue := c.issue
 	if issue != nil && !issue.reviewed && !issue.closed {
@@ -143,6 +152,7 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 	for _, n := range lenses {
 		lensGates = append(lensGates, n, n+"~which")
 	}
+	fake := c.fakeItOnly(now)
 	lensJob := &job{prio: prioRefactor, step: g.N, kind: g.Kind, ev: judge.Evidence{judge.PartDiff: net}, gates: lensGates,
 		finish: func(vs map[string]judge.Verdict) []Verdict {
 			clean, same, now := 0, false, ""
@@ -154,6 +164,10 @@ func (c *Coach) Recheck(now snapshot.ID) error {
 					w := vs[n+"~which"]
 					if w.Answer == judge.Uncertain {
 						continue // something, but not clearly what: not the old problem for sure
+					}
+					if w.Answer == specialCase && fake {
+						clean++ // one fake-it branch: nothing to refactor yet
+						continue
 					}
 					desc := problemDesc(n, w.Answer)
 					if slices.Contains(problems, desc) {
@@ -222,6 +236,33 @@ func problemDesc(lens, id string) string {
 		}
 	}
 	return id
+}
+
+// specialCase is the module-design lens's problem that a single fake-it
+// branch shows too.
+const specialCase = "special-case"
+
+// fakeItOnly tells whether the production code at id has at most one
+// branch on an exact value: a fake-it step waiting for its next example,
+// which generalises it. Refactoring it away now would change behaviour.
+func (c *Coach) fakeItOnly(id snapshot.ID) bool {
+	n, err := c.branchesAt(id)
+	return err == nil && n <= 1
+}
+
+// dropFakeIt leaves out the lenses that only saw special-case code when
+// that is one fake-it branch.
+func dropFakeIt(lenses []string, which map[string]judge.Verdict, fake bool) []string {
+	if !fake {
+		return lenses
+	}
+	var out []string
+	for _, n := range lenses {
+		if which[n+"~which"].Top != specialCase {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // sourceDiff joins the production code patches between two snapshots.

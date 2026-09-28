@@ -86,6 +86,7 @@ type kata struct {
 	mu      sync.Mutex
 	got     []Verdict
 	n       int
+	done    []steps.Step
 }
 
 func newKata(t *testing.T, sc judge.Scorer) *kata {
@@ -139,6 +140,7 @@ func (k *kata) run(tests string, failing ...string) {
 	k.prev = id
 	for _, e := range k.machine.Observe(obs) {
 		if sd, ok := e.(steps.StepDone); ok {
+			k.done = append(k.done, sd.Step)
 			if err := k.coach.Step(sd.Step); err != nil {
 				k.t.Fatal(err)
 			}
@@ -331,6 +333,23 @@ func TestLongTestGetsSizeHint(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("got %+v", k.got)
+	}
+}
+
+func TestNewTestFileBoilerplateIsNotTestSize(t *testing.T) {
+	k := newKata(t, nil)
+	k.write("kata.go", "package kata\n")
+	k.run("")
+	file := "package kata\n\nimport (\n\t\"fmt\"\n\t\"slices\"\n\t\"testing\"\n)\n\n" +
+		"func TestTable(t *testing.T) {\n\ttests := []struct{ n int }{\n\t\t{1},\n\t}\n\n" +
+		"\tfor _, tt := range tests {\n\t\tt.Run(fmt.Sprint(tt.n), func(t *testing.T) {\n" +
+		"\t\t\tif !slices.Equal(nil, []int{tt.n}) {\n\t\t\t\tt.Error(tt.n)\n\t\t\t}\n\t\t})\n\t}\n}\n"
+	k.write("kata_test.go", file)
+	k.run("TestTable", "TestTable")
+	for _, v := range k.got {
+		if v.Check == "test size" {
+			t.Fatalf("package, imports and blank lines counted: %s", v.Text)
+		}
 	}
 }
 
@@ -597,6 +616,310 @@ func TestRefactoringBeforeTheReviewAnsweredIsRechecked(t *testing.T) {
 	k.run("TestOne TestTwo")
 	k.drain()
 	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+// bigGreenKata: the first Green adds an if where a constant would do.
+func bigGreenKata(t *testing.T) *kata {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "step-size": "constant", "multi": "no", "cheating": "no",
+	}, answer: func(gate, state string) string {
+		if gate != "tpp" {
+			return ""
+		}
+		if strings.Contains(state, "+\tif") {
+			return "selection"
+		}
+		return "constant"
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"\" }\n")
+	k.write("kata_test.go", header)
+	k.run("")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne", "TestOne")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 1 {\n\t\treturn \"I\"\n\t}\n\treturn \"\"\n}\n")
+	k.run("TestOne")
+	k.drain()
+	if v := k.last(2, "step-size"); v == nil || v.Level != Hint || strings.HasPrefix(v.Text, "Still") {
+		t.Fatalf("want the Green's own simpler-change hint, got %+v", v)
+	}
+	return k
+}
+
+func TestSimplifyingAfterGreenResolvesTheStepSizeHint(t *testing.T) {
+	k := bigGreenKata(t)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.run("TestOne")
+	k.drain()
+	if v := k.last(2, "step-size"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved:") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestRefactoringThatKeepsTheBigChangeKeepsTheStepSizeHint(t *testing.T) {
+	k := bigGreenKata(t)
+	k.write("kata.go", "package kata\n\n// Roman converts n.\nfunc Roman(n int) string {\n\tif n == 1 {\n\t\treturn \"I\"\n\t}\n\treturn \"\"\n}\n")
+	k.run("TestOne")
+	k.drain()
+	if v := k.last(2, "step-size"); v == nil || v.Level != Hint {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestSimplifyingBeforeTheGreenVerdictIsRechecked(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "step-size": "constant", "multi": "no", "cheating": "no",
+	}, answer: func(gate, state string) string {
+		if gate == "tpp" && strings.Contains(state, "+\tif") {
+			return "selection"
+		}
+		if gate == "tpp" {
+			return "constant"
+		}
+		return ""
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"\" }\n")
+	k.write("kata_test.go", header)
+	k.run("")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne", "TestOne")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 1 {\n\t\treturn \"I\"\n\t}\n\treturn \"\"\n}\n")
+	k.run("TestOne")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.run("TestOne") // before the judge answered the Green
+	k.drain()
+	if v := k.last(2, "step-size"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved:") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestGeneralisingAfterGreenResolvesTheTestSpecificCodeHint(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no",
+	}, answer: func(gate, state string) string {
+		if gate != "cheating" {
+			return ""
+		}
+		if strings.Contains(state, "n == 2") {
+			return "yes"
+		}
+		return "no"
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 3 {\n\t\treturn \"III\"\n\t}\n\treturn \"I\"\n}\n")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II"))
+	k.run("TestOne TestTwo", "TestTwo")
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string {\n\tif n == 3 {\n\t\treturn \"III\"\n\t}\n\tif n == 2 {\n\t\treturn \"II\"\n\t}\n\treturn \"I\"\n}\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level != Hint || strings.HasPrefix(v.Text, "Still") {
+		t.Fatalf("want the Green's own test-specific code hint, got %+v", v)
+	}
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved:") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+// restart ends the session and resumes it in a new coach and machine, as
+// tddt --resume does with the saved history.
+func (k *kata) restart(sc judge.Scorer) {
+	byStep := map[int][]Verdict{}
+	k.mu.Lock()
+	for _, v := range k.got {
+		byStep[v.Step] = Upsert(byStep[v.Step], v)
+	}
+	k.got = nil
+	k.mu.Unlock()
+	k.coach = New(k.store, sc, "iteration-first", func(v Verdict) {
+		k.mu.Lock()
+		k.got = append(k.got, v)
+		k.mu.Unlock()
+	})
+	k.machine = steps.New()
+	k.machine.Resume(k.done)
+	if err := k.coach.Resume(k.done, byStep); err != nil {
+		k.t.Fatal(err)
+	}
+}
+
+func TestResumedSessionResolvesTheOpenRefactorHint(t *testing.T) {
+	k := smellyKata(t)
+	k.restart(k.coach.scorer)
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestResumedSessionMissesTheSkippedRefactor(t *testing.T) {
+	k := smellyKata(t)
+	k.restart(k.coach.scorer)
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestTwo", "2", "II")+test("TestThree", "3", "III"))
+	k.run("TestOne TestTwo TestThree", "TestThree")
+	k.drain()
+	if v := k.last(3, "missed refactor"); v == nil || v.Level != Hint {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestResumedSessionJudgesTheGreenAfterItsRed(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "constant", "step-size": "constant", "multi": "no", "cheating": "no",
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"\" }\n")
+	k.write("kata_test.go", header)
+	k.run("")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne", "TestOne")
+	k.drain()
+	k.restart(sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	k.run("TestOne")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level != OK {
+		t.Fatalf("the Green after a resumed Red gets all its checks, got %+v", v)
+	}
+	if !strings.Contains(sc.evidence["step-size"], "want I") {
+		t.Fatalf("step-size did not see the Red's transcript: %q", sc.evidence["step-size"])
+	}
+}
+
+func TestExactValueBranches(t *testing.T) {
+	cases := []struct {
+		src  string
+		want int
+	}{
+		{"func Roman(n int) string {\n\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\treturn strings.Repeat(\"I\", n)\n}\n", 1},
+		{"\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\tif n == 9 {\n\t\treturn \"IX\"\n\t}\n", 2},
+		{"if (commands == \"R\") return \"0:0:E\";\nif (commands == \"RR\") return \"0:0:S\";\n", 2},
+		{"    if p1 == 1:\n        return \"Fifteen-Love\"\n", 1},
+		{"\tswitch n {\n\tcase 4:\n\t\treturn \"IV\"\n\tcase 9:\n\t\treturn \"IX\"\n\t}\n", 2},
+		{"  def roman(4), do: \"IV\"\n  def roman(n), do: String.duplicate(\"I\", n)\n", 1},
+		{"\tif pins < 0 || pins > allPins {\n", 0},
+		{"\tif n != 0 {\n", 0},
+		{"\tif n % 3 == 0 {\n\t\treturn \"Fizz\"\n\t}\n\tif n%5 == 0 {\n", 0}, // FizzBuzz rules, not test values
+		{"    if len(cells) == 1:\n", 0},
+		{"\tif n == 0 {\n\t\treturn \"\"\n\t}\n\tif s == \"\" {\n", 0}, // the zero/empty guard
+		{"    if p1 == 3 and p2 == 3:\n        return \"Deuce\"\n", 1},
+	}
+	for _, c := range cases {
+		if got := exactValueBranches(c.src); got != c.want {
+			t.Errorf("exactValueBranches(%q) = %d, want %d", c.src, got, c.want)
+		}
+	}
+}
+
+func TestOneBranchForATestValueIsFakeIt(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no", "cheating": "yes",
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestFour", "4", "IV"))
+	k.run("TestOne TestFour", "TestFour")
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\treturn strings.Repeat(\"I\", n)\n}\n")
+	k.run("TestOne TestFour")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level != OK || !strings.Contains(v.Text, "fake-it") {
+		t.Fatalf("first example of a new rule: want an OK fake-it note, got %+v", v)
+	}
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestFour", "4", "IV")+test("TestNine", "9", "IX"))
+	k.run("TestOne TestFour TestNine", "TestNine")
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\tif n == 9 {\n\t\treturn \"IX\"\n\t}\n\treturn strings.Repeat(\"I\", n)\n}\n")
+	k.run("TestOne TestFour TestNine")
+	k.drain()
+	if v := k.last(4, "cheating"); v == nil || v.Level != Hint {
+		t.Fatalf("second example special-cased: want a hint, got %+v", v)
+	}
+}
+
+func TestResumeLooksPastAGreenThatOnlyFixedABrokenTest(t *testing.T) {
+	k := smellyKata(t)
+	g := k.done[len(k.done)-1]
+	// recorded by an earlier version: a test broke while refactoring, and
+	// fixing it counted as a Green of its own
+	k.done = append(k.done,
+		steps.Step{N: 3, Kind: steps.AnomalyStep, Anomalies: []steps.Anomaly{steps.BrokeExistingTest}, From: g.To, To: g.To},
+		steps.Step{N: 4, Kind: steps.Green, From: g.To, To: g.To})
+	k.restart(k.coach.scorer)
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.run("TestOne TestTwo")
+	k.drain()
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK || !strings.HasPrefix(v.Text, "Resolved") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+// specialCaseKata: the Green adds branches on exact values, and the
+// module-design lens calls them special-case code.
+func specialCaseKata(t *testing.T, green string) *kata {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no", "cheating": "no",
+		"review-philosophy": "yes", "review-philosophy~which": "special-case",
+	}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string { return strings.Repeat(\"I\", n) }\n")
+	k.write("kata_test.go", header+test("TestOne", "1", "I"))
+	k.run("TestOne")
+	k.write("kata_test.go", header+test("TestOne", "1", "I")+test("TestFour", "4", "IV"))
+	k.run("TestOne TestFour", "TestFour")
+	k.write("kata.go", green)
+	k.run("TestOne TestFour")
+	k.drain()
+	return k
+}
+
+func TestOneFakeItBranchIsNotSpecialCaseToRefactor(t *testing.T) {
+	k := specialCaseKata(t, "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\treturn strings.Repeat(\"I\", n)\n}\n")
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != OK {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestSeveralSpecialCasesAreWorthRefactoring(t *testing.T) {
+	k := specialCaseKata(t, "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n\tif n == 9 {\n\t\treturn \"IX\"\n\t}\n\treturn strings.Repeat(\"I\", n)\n}\n")
+	if v := k.last(2, "refactor opportunity"); v == nil || v.Level != Hint || !strings.Contains(v.Text, "Special-case code") {
+		t.Fatalf("got %+v", v)
+	}
+}
+
+func TestAnotherBranchPerExampleIsTestSpecific(t *testing.T) {
+	// the judge can't decide; the branch count can
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{
+		"red-check": "yes", "one-behaviour": "yes", "tpp": "selection", "step-size": "simple", "multi": "no", "cheating": "unsure",
+	}}
+	k := newKata(t, sc)
+	four := "\tif n == 4 {\n\t\treturn \"IV\"\n\t}\n"
+	five := "\tif n == 5 {\n\t\treturn \"V\"\n\t}\n"
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n"+four+"\treturn strings.Repeat(\"I\", n)\n}\n")
+	k.write("kata_test.go", header+test("TestFour", "4", "IV"))
+	k.run("TestFour")
+	k.write("kata_test.go", header+test("TestFour", "4", "IV")+test("TestFive", "5", "V"))
+	k.run("TestFour TestFive", "TestFive")
+	k.write("kata.go", "package kata\n\nimport \"strings\"\n\nfunc Roman(n int) string {\n"+four+five+"\treturn strings.Repeat(\"I\", n)\n}\n")
+	k.run("TestFour TestFive")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level != Hint || !strings.Contains(v.Text, "2 test values") {
+		t.Fatalf("got %+v", v)
+	}
+	// generalising removes the branches: resolved
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return table(n) }\n\nfunc table(n int) string { return [...]string{\"\", \"I\", \"II\", \"III\", \"IV\", \"V\"}[n] }\n")
+	k.run("TestFour TestFive")
+	k.drain()
+	if v := k.last(2, "cheating"); v == nil || v.Level == Hint {
 		t.Fatalf("got %+v", v)
 	}
 }

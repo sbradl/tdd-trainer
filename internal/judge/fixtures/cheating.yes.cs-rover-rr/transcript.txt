@@ -1,0 +1,5 @@
+Assert.Equal() Failure: Strings differ
+               ↓ (pos 4)
+Expected: "0:0:S"
+Actual:   "0:0:N"
+               ↑ (pos 4)

@@ -1,0 +1,8 @@
+diff --git a/life.py b/life.py
+index 271414e1020f939391cd59e7e095f39e85f026c7..38c03e053a748362d8ee13fa0aaeef9ecd792278 100644
+--- a/life.py
++++ b/life.py
+@@ -1,2 +1,2 @@
+ def next_generation(cells):
+-    return set()
++    return cells

@@ -1,0 +1,21 @@
+=== RUN   TestOneStrike
+--- FAIL: TestOneStrike (0.00s)
+panic: runtime error: index out of range [19] with length 19 [recovered, repanicked]
+
+goroutine 21 [running]:
+testing.tRunner.func1.2({0x6ca080, 0xd67cadee000})
+	/usr/lib/go/src/testing/testing.go:2123 +0x232
+testing.tRunner.func1()
+	/usr/lib/go/src/testing/testing.go:2126 +0x329
+panic({0x6ca080?, 0xd67cadee000?})
+	/usr/lib/go/src/runtime/panic.go:859 +0x125
+bowling.(*Game).Score(...)
+	/tmp/claude-1000/-home-sbradl-Projects-tdd-trainer/c2c905be-fd00-4eb0-b570-0cda344075fa/scratchpad/runs/go_bowling/bowling.go:15
+bowling.assertScore(0xd67cade4908, 0xd67cad52f48, 0x18)
+	/tmp/claude-1000/-home-sbradl-Projects-tdd-trainer/c2c905be-fd00-4eb0-b570-0cda344075fa/scratchpad/runs/go_bowling/bowling_test.go:13 +0x11c
+bowling.TestOneStrike(0xd67cade4908)
+	/tmp/claude-1000/-home-sbradl-Projects-tdd-trainer/c2c905be-fd00-4eb0-b570-0cda344075fa/scratchpad/runs/go_bowling/bowling_test.go:45 +0x14d
+testing.tRunner(0xd67cade4908, 0x6d57d0)
+	/usr/lib/go/src/testing/testing.go:2193 +0xea
+created by testing.(*T).Run in goroutine 1
+	/usr/lib/go/src/testing/testing.go:2258 +0x4d4

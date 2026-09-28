@@ -1,0 +1,13 @@
+diff --git a/Rover.cs b/Rover.cs
+index 60324e2e850070be9c4bd962d612e84ff519a543..eadc867380204063a758dd2d8f26c5f430eb57c5 100644
+--- a/Rover.cs
++++ b/Rover.cs
+@@ -6,6 +6,8 @@     public string Execute(string commands)
+     {
+         if (commands == "R")
+             return "0:0:E";
++        if (commands == "RR")
++            return "0:0:S";
+         return "0:0:N";
+     }
+ }

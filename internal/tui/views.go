@@ -132,11 +132,14 @@ func (m *Model) cards() []card {
 		}
 	}
 	if r := m.redInProgress; r != nil {
-		text := "The compile error counts as failing: it tells you to create the code under test. Add the smallest stub so the test compiles and fails on its assertion; that completes the Red."
-		if !r.BuildBroken {
+		title, text := "Red in progress", "The compile error counts as failing: it tells you to create the code under test. Add the smallest stub so the test compiles and fails on its assertion; that completes the Red."
+		switch {
+		case r.Refactoring:
+			title, text = "Build broken", "The build broke while refactoring: make it compile again. The refactoring goes on once the tests pass."
+		case !r.BuildBroken:
 			text = "The new test errors before its assertion. Make it reach the assertion and fail there."
 		}
-		out = append(out, card{coach.Hint, "Red in progress", text, false})
+		out = append(out, card{coach.Hint, title, text, false})
 	}
 	if c, ok := m.nextCard(); ok {
 		out = append(out, c)

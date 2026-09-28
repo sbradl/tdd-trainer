@@ -1,0 +1,9 @@
+
+func TestOneSpare(t *testing.T) {
+	g := &Game{}
+	g.Roll(5)
+	g.Roll(5)
+	g.Roll(3)
+	rollMany(g, 17, 0)
+	assertScore(t, g, 16)
+}

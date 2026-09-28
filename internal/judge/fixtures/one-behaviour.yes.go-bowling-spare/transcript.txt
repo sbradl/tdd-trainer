@@ -1,0 +1,3 @@
+=== RUN   TestOneSpare
+    bowling_test.go:36: Score() = 13, want 16
+--- FAIL: TestOneSpare (0.00s)

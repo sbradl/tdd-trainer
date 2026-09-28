@@ -232,3 +232,57 @@ func TestNextTestKeyAndCard(t *testing.T) {
 		t.Errorf("toast:\n%s", v)
 	}
 }
+
+func TestResumedSessionShowsItsEarlierSteps(t *testing.T) {
+	m := New(&fakeCtl{}, "")
+	start := time.Now().Add(-time.Hour)
+	h := app.History{Start: start, End: time.Now(), Paused: 50 * time.Minute, Steps: []app.StepRecord{
+		{Step: steps.Step{N: 1, Kind: steps.Red, NewTests: []string{"one"}}},
+		{Step: steps.Step{N: 2, Kind: steps.Green}, Verdicts: []coach.Verdict{
+			verdict(2, steps.Green, "step-size", coach.Hint, "A simpler change would have done."),
+		}},
+	}}
+	feed(m, tea.WindowSizeMsg{Width: 100, Height: 30}, app.ResumedMsg{History: h}, app.PhaseMsg{Phase: steps.PhaseRefactor})
+	v := m.View()
+	for _, want := range []string{"step 2 · Green · Simplest change", "A simpler change would have done.", "resumed the session: 2 steps so far"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("missing %q in:\n%s", want, v)
+		}
+	}
+	if d := m.now().Sub(m.start); d < 9*time.Minute || d > 11*time.Minute {
+		t.Errorf("session clock at %v, want the 10 minutes practised before the pause", d)
+	}
+}
+
+func TestFixedBrokenTestDropsItsWarning(t *testing.T) {
+	m := New(&fakeCtl{}, "")
+	session1(m)
+	broke := coach.Verdict{Step: 3, Kind: steps.AnomalyStep, Check: "anomaly", Level: coach.Warn, Answer: steps.BrokeExistingTest.String(),
+		Text: "A test that passed before is failing now: undo the last change or get back to green first."}
+	feed(m, run([]string{"one"}, "one"), step(3, steps.AnomalyStep), broke)
+	if !strings.Contains(m.View(), "A test that passed before is failing now") {
+		t.Fatal("want the warning while the test fails")
+	}
+	feed(m, run([]string{"one"}), steps.TestsFixed{Step: 3}, coach.FixedBreak(3))
+	v := m.View()
+	if strings.Contains(v, "A test that passed before is failing now") || !strings.Contains(v, "all tests pass again") {
+		t.Fatalf("want the warning gone and a note that it was fixed:\n%s", v)
+	}
+}
+
+func TestBuildBrokenWhileRefactoringThenABrokenTest(t *testing.T) {
+	m := New(&fakeCtl{}, "")
+	session1(m)
+	feed(m, run(nil), steps.RedInProgress{BuildBroken: true, Refactoring: true})
+	v := m.View()
+	if !strings.Contains(v, "The build broke while refactoring") || strings.Contains(v, "smallest stub") {
+		t.Fatalf("want a build-broken card, not a stub request:\n%s", v)
+	}
+	broke := coach.Verdict{Step: 3, Kind: steps.AnomalyStep, Check: "anomaly", Level: coach.Warn, Answer: steps.BrokeExistingTest.String(),
+		Text: "A test that passed before is failing now: undo the last change or get back to green first."}
+	feed(m, run([]string{"one"}, "one"), step(3, steps.AnomalyStep), broke)
+	v = m.View()
+	if strings.Contains(v, "The build broke while refactoring") || !strings.Contains(v, "A test that passed before is failing now") {
+		t.Fatalf("want the broken-test warning instead of the build card:\n%s", v)
+	}
+}

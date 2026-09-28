@@ -1,0 +1,64 @@
+diff --git a/bowling.go b/bowling.go
+index 66dace0ba9a8fe8392f7e2c32eaaed15c9377522..fd9eb096fa073c904b504ffb8611ab5a7e90ba97 100644
+--- a/bowling.go
++++ b/bowling.go
+@@ -5,20 +5,44 @@
+ // ErrInvalidRoll is returned for a roll outside 0..10 pins.
+ var ErrInvalidRoll = errors.New("invalid roll")
+ 
++// ErrGameOver is returned for a roll after the last frame.
++var ErrGameOver = errors.New("game over")
++
+ const (
+ 	frames  = 10
+ 	allPins = 10
+ )
+ 
+ type Game struct {
+-	rolls []int
++	rolls     []int
++	frame     int
++	second    bool
++	firstPins int
++	tenth     []int
+ }
+ 
+ func (g *Game) Roll(pins int) error {
+ 	if pins < 0 || pins > allPins {
+ 		return ErrInvalidRoll
+ 	}
++	if g.over() {
++		return ErrGameOver
++	}
++	if g.frame < frames-1 && g.second && g.firstPins+pins > allPins {
++		return ErrInvalidRoll
++	}
+ 	g.rolls = append(g.rolls, pins)
++	if g.frame < frames-1 {
++		if g.second || pins == allPins {
++			g.frame++
++			g.second = false
++		} else {
++			g.second = true
++			g.firstPins = pins
++		}
++	} else {
++		g.tenth = append(g.tenth, pins)
++	}
+ 	return nil
+ }
+ 
+@@ -48,3 +72,13 @@
+ func (g *Game) strikeBonus(first int) int { return g.rolls[first+1] + g.rolls[first+2] }
+ 
+ func (g *Game) spareBonus(first int) int { return g.rolls[first+2] }
++
++func (g *Game) over() bool {
++	if g.frame < frames-1 || len(g.tenth) < 2 {
++		return false
++	}
++	if len(g.tenth) == 3 {
++		return true
++	}
++	return g.tenth[0]+g.tenth[1] < allPins
++}

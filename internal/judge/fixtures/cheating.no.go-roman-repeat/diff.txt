@@ -1,0 +1,17 @@
+diff --git a/roman.go b/roman.go
+index 4a267e5..3122f07 100644
+--- a/roman.go
++++ b/roman.go
+@@ -1,9 +1,7 @@
+ package kata
+ 
+-func Roman(n int) string {
+-	if n == 0 {
+-		return ""
+-	}
++import "strings"
+ 
+-	return "I"
++func Roman(n int) string {
++	return strings.Repeat("I", n)
+ }

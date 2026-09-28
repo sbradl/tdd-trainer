@@ -1,0 +1,31 @@
+package kata
+
+import "testing"
+
+func TestRoman_1_Should_Return_I(t *testing.T) {
+	AssertRoman(1, "I", t)
+}
+
+func TestRoman_0_Should_Return_EmptyString(t *testing.T) {
+	AssertRoman(0, "", t)
+}
+
+func TestRoman_2_Should_Return_II(t *testing.T) {
+	AssertRoman(2, "II", t)
+}
+
+func TestRoman_4_Should_Return_IV(t *testing.T) {
+	AssertRoman(4, "IV", t)
+}
+
+func TestRoman_9_Should_Return_IX(t *testing.T) {
+	AssertRoman(9, "IX", t)
+}
+
+func AssertRoman(n int, expected string, t *testing.T) {
+	r := Roman(n)
+
+	if r != expected {
+		t.Errorf(`Roman(%v) failed: expected %v but got %v`, n, expected, r)
+	}
+}

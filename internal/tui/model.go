@@ -117,10 +117,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.PhaseChanged:
 		m.showToast("phase set by hand → " + phaseName(msg.Phase))
 	case steps.StepDone:
+		m.redInProgress = nil // a step ends whatever was in progress
 		if msg.Step.Kind == steps.Red {
 			m.next = nil
 			m.cycle++
-			m.redInProgress = nil
 			m.startsRed = false
 		}
 		sv := &stepView{step: msg.Step, cycle: m.cycle}
@@ -130,7 +130,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case coach.Verdict:
 		if sv := m.byN[msg.Step]; sv != nil {
 			for _, old := range sv.verdicts {
-				if old.Check == msg.Check && old.Level == coach.Hint && msg.Level == coach.OK {
+				if old.Check == msg.Check && old.Answer == msg.Answer && (old.Level == coach.Hint || old.Level == coach.Warn) && msg.Level == coach.OK {
 					m.showToast(msg.Text) // a hint was resolved: say so, the card goes away
 				}
 			}
@@ -145,6 +145,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.next = &msg
 		}
+	case app.ResumedMsg:
+		// catch up with the earlier part of the session
+		h := msg.History
+		for _, r := range h.Steps {
+			m.Update(steps.StepDone{Step: r.Step})
+			for _, v := range r.Verdicts {
+				m.Update(v)
+			}
+		}
+		m.start = m.now().Add(-(h.End.Sub(h.Start) - h.Paused))
+		m.showToast(fmt.Sprintf("resumed the session: %d steps so far", len(h.Steps)))
 	case app.PhaseMsg:
 		m.phase = msg.Phase
 	case app.JudgeMsg:

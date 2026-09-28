@@ -2,7 +2,27 @@
 
 ## Upcoming version
 
-Nothing yet.
+### Sessions
+
+- **`tddt --resume` continues the last session** after a restart (say, to update `tddt`). Step numbers go on, `tddt show` and the report cover the whole session, and the time `tddt` wasn't running doesn't count. If you were in a Red, the Green that follows is judged as usual; after a Green, its open hints come back and update as you refactor. Changes made while `tddt` was off count like a save.
+
+### Coaching
+
+- **Fewer false hints, tuned on longer katas** (bowling, Game of Life, Mars Rover, word wrap, tennis, prime factors):
+  - A test that sets up a scenario with several calls (say, three rolls) and checks it once no longer gets "checks more than one behaviour".
+  - A first fake-it step (`return "Love-All"`) or a short function with one `if` no longer gets a *Refactor now* hint about magic strings or long functions.
+  - **Special cases are counted.** One branch for a single test value (`if n == 4 { return "IV" }`) is a fake-it step for the first example of a new rule: it gets a note to generalise with the next example, not a hint, and *Refactor now* doesn't ask you to refactor it away (that would change behaviour without a test). A Green that adds another one (`n == 5`, `n == 6`, or `commands == "R"` then `"RR"`) gets "Another branch for a single test value: the code now special-cases 3 test values", even when the judge isn't sure. Computed conditions (`n % 3 == 0`) and the zero/empty guard don't count.
+  - Returning a parameter instead of a literal (`return cells`, `[]int{n}`) is recognised as Constant → Variable.
+
+- **Green hints update as you refactor.** After *A simpler change would have done* or *The code special-cases the test's inputs*, fixing the code while the tests are green now re-checks the hint: it turns into *Resolved*, or says the problem is still there. Before, both stayed until the end of the session.
+
+### Fixes
+
+- **A build broken while refactoring is no Red.** If only code changed, the card says "The build broke while refactoring: make it compile again" instead of asking for a stub. Once it compiles, a test that fails now is "a test that passed before is failing now", not a Red in progress that never goes away.
+- **Fixing a test you broke goes on where you were.** Broken while refactoring, getting back to green continues the refactoring; before, it counted as a new Green that judged your fix as if it were new code, and the hints of the real Green stopped updating. Either way, the warning "A test that passed before is failing now" turns into *Resolved* once all tests pass again, instead of staying for the rest of the cycle.
+- **Starting in a fresh kata folder works.** With only `go.mod` (or no tests yet), some runners fail, and the session started as "Red in progress", so the first cycle was never judged. Now a folder without tests is an empty, green start.
+- **A typo or a missing function in a new test is "Red in progress" in Python and Elixir.** A `NameError`, `ImportError` or Elixir `UndefinedFunctionError` completed the Red at once and then warned about the wrong reason; fixing the typo was flagged as "a test was changed while making it pass". Now these are recognised exactly, and the Red completes when the test fails on its assertion. A crash inside the code under test is still left to the judge.
+- **"Small test" ignores imports and blank lines**, so a first table-driven Go test no longer gets a size hint for its `package` and `import` lines.
 
 ## 2026-09-26.2
 

@@ -1,6 +1,10 @@
 package coach
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/sbradl/tdd-trainer/internal/steps"
+)
 
 // checkInfo names a check for people and says what it looks at and why.
 type checkInfo struct{ label, about string }
@@ -57,15 +61,17 @@ func Label(check string) string {
 func About(check string) string { return checks[check].about }
 
 // Upsert adds v to a step's verdicts; a newer verdict of the same check
-// replaces the older one (a re-checked refactor hint), except anomalies,
-// of which a step can have several.
+// replaces the older one (a re-checked refactor hint). A step can have
+// several anomalies: one replaces only the same anomaly (a broken test
+// fixed), matched by Answer or, as saved by older versions, by its warning.
 func Upsert(vs []Verdict, v Verdict) []Verdict {
-	if v.Check != "anomaly" {
-		for i := range vs {
-			if vs[i].Check == v.Check {
-				vs[i] = v
-				return vs
-			}
+	for i := range vs {
+		if vs[i].Check != v.Check {
+			continue
+		}
+		if v.Check != "anomaly" || (v.Answer != "" && (vs[i].Answer == v.Answer || v.Answer == steps.BrokeExistingTest.String() && IsBreakWarning(vs[i]))) {
+			vs[i] = v
+			return vs
 		}
 	}
 	return append(vs, v)

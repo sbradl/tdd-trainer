@@ -66,9 +66,15 @@ func describe(evs []Event) []string {
 				out = append(out, "Baseline")
 			}
 		case RedInProgress:
-			out = append(out, "RedInProgress")
+			if e.Refactoring {
+				out = append(out, "BuildBrokenInRefactor")
+			} else {
+				out = append(out, "RedInProgress")
+			}
 		case PhaseChanged:
 			out = append(out, "Phase "+e.Phase.String())
+		case TestsFixed:
+			out = append(out, fmt.Sprintf("Fixed(%d)", e.Step))
 		case StepDone:
 			s := e.Step
 			d := s.Kind.String()
@@ -197,11 +203,12 @@ func TestTransitions(t *testing.T) {
 			{"a b |", "s"},
 		}, "Baseline; Red(b)[s0→s1]; Green(testEdited)[s1→s3]"},
 
-		{"test goes red during refactor", []run{
+		{"test goes red during refactor; fixing it goes on refactoring, it is no new Green", []run{
 			{"a b |", ""},
 			{"a b | a", "s"},
 			{"a b |", "s"},
-		}, "Baseline; Anomaly(broke)[s0→s1]; Green[s1→s2]"},
+			{"a b c | c", "t"},
+		}, "Baseline; Anomaly(broke)[s0→s1]; Fixed(1); Refactor[s1→s2]; Red(c)[s2→s3]"},
 
 		{"existing test breaks while making it pass (reported once)", []run{
 			{"a |", ""},
@@ -209,7 +216,7 @@ func TestTransitions(t *testing.T) {
 			{"a b | a b", "s"},
 			{"a b | a b", "s"},
 			{"a b |", "s"},
-		}, "Baseline; Red(b)[s0→s1]; Anomaly(broke)[s1→s2]; Green[s2→s4]"},
+		}, "Baseline; Red(b)[s0→s1]; Anomaly(broke)[s1→s2]; Fixed(2); Green[s2→s4]"},
 
 		{"compile errors while making it pass are normal", []run{
 			{"a |", ""},
@@ -276,7 +283,15 @@ func TestTransitions(t *testing.T) {
 			{"broken", "s"},
 			{"a |", "s"},
 			{"a b | b", "t"},
-		}, "Baseline; RedInProgress; Refactor[s0→s2]; Red(b)[s2→s3]"},
+		}, "Baseline; BuildBrokenInRefactor; Refactor[s0→s2]; Red(b)[s2→s3]"},
+
+		{"build broken during refactor, then it compiles but an existing test fails", []run{
+			{"a b |", ""},
+			{"broken", "s"},
+			{"a b | a", "s"},
+			{"a b |", "s"},
+			{"a b c | c", "t"},
+		}, "Baseline; BuildBrokenInRefactor; Anomaly(broke)[s0→s2]; Fixed(1); Refactor[s2→s3]; Red(c)[s3→s4]"},
 
 		{"session starting red", []run{
 			{"a b | b", ""},
@@ -358,4 +373,84 @@ func replay2(m *Machine, runs []run) []Event {
 		out = append(out, m.Observe(r.observation(i))...)
 	}
 	return out
+}
+
+// lastStep runs a first session and returns its last completed step.
+func lastStep(t *testing.T, runs []run) Step {
+	t.Helper()
+	evs := replay2(New(), runs)
+	for i := len(evs) - 1; i >= 0; i-- {
+		if sd, ok := evs[i].(StepDone); ok {
+			return sd.Step
+		}
+	}
+	t.Fatal("no step")
+	return Step{}
+}
+
+func TestResumeAfterRedCompletesTheGreen(t *testing.T) {
+	last := lastStep(t, []run{{"a |", ""}, {"a b | b", "t"}})
+	m := New()
+	m.Resume([]Step{last})
+	if m.Phase() != PhaseGreen {
+		t.Fatalf("phase %v", m.Phase())
+	}
+	got := describe(m.Observe(run{"a b |", "s"}.observation(9)))
+	if strings.Join(got, ";") != "Green[s1→s9]" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestResumeAfterGreenContinuesTheCycle(t *testing.T) {
+	last := lastStep(t, []run{{"a |", ""}, {"a b | b", "t"}, {"a b |", "s"}})
+	m := New()
+	m.Resume([]Step{last})
+	if m.Phase() != PhaseRefactor {
+		t.Fatalf("phase %v", m.Phase())
+	}
+	// refactored while tddt was off, then the next test
+	got := describe(m.Observe(run{"a b |", "s"}.observation(8)))
+	got = append(got, describe(m.Observe(run{"a b c | c", "t"}.observation(9)))...)
+	if strings.Join(got, ";") != "Refactor[s2→s8];Red(c)[s8→s9]" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestResumeAfterGreenNextRedIsAfterGreen(t *testing.T) {
+	last := lastStep(t, []run{{"a |", ""}, {"a b | b", "t"}, {"a b |", "s"}})
+	m := New()
+	m.Resume([]Step{last})
+	evs := m.Observe(run{"a b c | c", "t"}.observation(9))
+	if s := evs[len(evs)-1].(StepDone).Step; s.N != 3 || !s.AfterGreen || s.Kind != Red {
+		t.Fatalf("got %v", describe(evs))
+	}
+}
+
+func TestResumeAfterATestBrokeWhileRefactoring(t *testing.T) {
+	runs := []run{{"a |", ""}, {"a b | b", "t"}, {"a b |", "s"}, {"a b | a", "s"}}
+	evs := replay2(New(), runs)
+	var done []Step
+	for _, e := range evs {
+		if sd, ok := e.(StepDone); ok {
+			done = append(done, sd.Step)
+		}
+	}
+	m := New()
+	m.Resume(done)
+	got := describe(m.Observe(run{"a b |", "s"}.observation(8)))
+	got = append(got, describe(m.Observe(run{"a b c | c", "t"}.observation(9)))...)
+	if strings.Join(got, ";") != "Fixed(3);Refactor[s3→s8];Red(c)[s8→s9]" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestResumeWithABrokenTestIsNoRed(t *testing.T) {
+	last := lastStep(t, []run{{"a |", ""}, {"a b | b", "t"}, {"a b |", "s"}})
+	m := New()
+	m.Resume([]Step{last})
+	// the code changed while tddt was off and broke a test that existed
+	got := describe(m.Observe(run{"a b | a", "s"}.observation(8)))
+	if strings.Join(got, ";") != "Anomaly(broke)[s2→s8]" {
+		t.Fatalf("got %v", got)
+	}
 }

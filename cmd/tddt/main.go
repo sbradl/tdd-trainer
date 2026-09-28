@@ -33,7 +33,9 @@ import (
 )
 
 const usage = `usage:
-  tddt [--once] [--no-judge] [--cpu] [dir] watch the project in dir (default .)
+  tddt [--once] [--no-judge] [--cpu] [--resume] [dir]
+                                           watch the project in dir (default .);
+                                           --resume continues the last session
   tddt init [--preset NAME] [--yes] [dir]  write .tddtrainer.yml
   tddt setup [--model-file F] [--lib-dir D] download the judge's libraries and model
   tddt show STEP [dir]                     print a step of the last session with its full diff
@@ -71,6 +73,7 @@ func run(args []string, in io.Reader, out io.Writer) error {
 	once := fs.Bool("once", false, "run the tests once, print the Test state and exit")
 	noJudge := fs.Bool("no-judge", false, "exact checks only; do not load the model")
 	cpu := fs.Bool("cpu", false, "do not use the GPU for the judge")
+	resume := fs.Bool("resume", false, "continue the last session instead of starting a new one")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -106,7 +109,7 @@ func run(args []string, in io.Reader, out io.Writer) error {
 		fmt.Fprintln(out, o.State)
 		return nil
 	}
-	return watchLoop(ctx, cfg, dir, out, judgeScorer(out, *noJudge, *cpu))
+	return watchLoop(ctx, cfg, dir, out, judgeScorer(out, *noJudge, *cpu), *resume)
 }
 
 // judgeScorer starts loading the judge when its files are installed.
@@ -128,7 +131,7 @@ const exitCodeOnlyWarning = "warning: no test results read, using the exit code 
 
 // watchLoop runs the session with the TUI, or with plain lines when
 // stdout is not a terminal.
-func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer, jd *judge.Lazy) error {
+func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer, jd *judge.Lazy, resume bool) error {
 	if jd != nil {
 		defer jd.Close()
 	}
@@ -144,6 +147,9 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 			}
 		})
 		if err != nil {
+			return err
+		}
+		if err := resumeSession(a, resume, out); err != nil {
 			return err
 		}
 		ctx, cancel := context.WithCancel(ctx)
@@ -202,14 +208,36 @@ func watchLoop(ctx context.Context, cfg config.Config, dir string, out io.Writer
 			}
 		case app.ErrorMsg:
 			printf("error: %v\n", e.Err)
+		case app.ResumedMsg:
+			n := len(e.History.Steps)
+			printf("» resumed the session of %s: %d steps so far, next is step %d\n", e.History.Start.Format("2006-01-02 15:04"), n, e.History.Steps[n-1].Step.N+1)
 		}
 	})
 	if err != nil {
 		return err
 	}
+	if err := resumeSession(a, resume, out); err != nil {
+		return err
+	}
 	printf("Watching (%s); Ctrl-C to quit.\n", status)
 	err = a.Run(ctx)
 	return errors.Join(err, finish(a, dir, out))
+}
+
+// resumeSession continues the last session when asked to; without one it
+// says so and a new session starts.
+func resumeSession(a *app.App, resume bool, out io.Writer) error {
+	if !resume {
+		return nil
+	}
+	ok, err := a.Resume()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		fmt.Fprintln(out, "No earlier session with steps to continue; starting a new one.")
+	}
+	return nil
 }
 
 // finish writes the session report and prints the summary.
@@ -236,9 +264,15 @@ func printStepEvent(out io.Writer, ev steps.Event) {
 			fmt.Fprintln(out, "» baseline set")
 		}
 	case steps.RedInProgress:
-		fmt.Fprintln(out, "» Red in progress: add the smallest stub so the new test compiles and fails on its assertion")
+		if ev.Refactoring {
+			fmt.Fprintln(out, "» build broken while refactoring: make it compile again")
+		} else {
+			fmt.Fprintln(out, "» Red in progress: add the smallest stub so the new test compiles and fails on its assertion")
+		}
 	case steps.PhaseChanged:
 		fmt.Fprintln(out, "» phase set by hand:", ev.Phase)
+	case steps.TestsFixed:
+		fmt.Fprintf(out, "» all tests pass again (broken in step %d)\n", ev.Step)
 	case steps.StepDone:
 		s := ev.Step
 		line := fmt.Sprintf("» step %d: %s", s.N, s.Kind)

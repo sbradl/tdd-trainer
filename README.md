@@ -245,7 +245,8 @@ It gives no scores.
 ## Commands and keys
 
 ```text
-tddt [--once] [--no-judge] [--cpu] [dir]   watch and coach the project in dir (default .)
+tddt [--once] [--no-judge] [--cpu] [--resume] [dir]
+                                           watch and coach the project in dir (default .)
 tddt init [--preset NAME] [--yes] [dir]    write .tddtrainer.yml (detects the project type)
 tddt setup [--model-file F] [--lib-dir D]  install the judge's libraries and model
 tddt show STEP [dir]                       a step of the last session: verdicts and full diff
@@ -256,6 +257,7 @@ tddt judge --regress [--cpu] [--gate G]    check the judge against its labelled 
 - `--once` runs the tests once and prints the test state.
 - `--no-judge` runs only the exact checks.
 - `--cpu` never uses the GPU.
+- `--resume` continues the last session instead of starting a new one: the step numbers go on, the report covers the whole session (without the time `tddt` wasn't running), and open hints of the last Green are re-checked as you refactor. Changes you made while `tddt` was off count like a save.
 
 | Key | |
 |---|---|

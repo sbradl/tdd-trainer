@@ -2,6 +2,7 @@ package coach
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/sbradl/tdd-trainer/internal/judge"
@@ -104,6 +105,61 @@ func (c *Coach) finishGreen(vs map[string]judge.Verdict) []Verdict {
 		}
 	}
 	return out
+}
+
+// exactValue matches a branch on one exact test value on a line: a
+// variable compared with a number or string literal, a switch case or a
+// function clause on one. Zero and the empty string are left out (the
+// degenerate case is a rule of its own), and so are computed values
+// (n % 3 == 0, len(cells) == 1).
+var exactValue = regexp.MustCompile(`\b[A-Za-z_]\w*\s*(?:==|===|\bis)\s*(?:-?[1-9]\d*(?:\.\d+)?\b|"[^"\n]+"|'[^'\n]+')|^\s*case\s+(?:-?[1-9]\d*|"[^"\n]+"|'[^'\n]+')\s*:|^\s*defp?\s+\w+[?!]?\((?:-?[1-9]\d*|"[^"\n]+")[,)]`)
+
+// exactValueBranches counts the lines of source that branch on an exact
+// test value.
+func exactValueBranches(source string) int {
+	n := 0
+	for _, l := range strings.Split(source, "\n") {
+		if exactValue.MatchString(l) {
+			n++
+		}
+	}
+	return n
+}
+
+const fakeItText = "One branch for one test value: fine as a first fake-it step for a new rule. When the next example of this rule comes, generalise instead of adding another branch."
+
+// byBranches marks a test-specific code verdict decided by counting
+// branches on exact test values rather than by the judge.
+const byBranches = "branches"
+
+// countedCheating decides the test-specific code check from the branches
+// on exact test values before the Green and now, where the count is
+// clearer than the judge: one more such branch next to another is special
+// cases piling up; a single one the judge flags is a fake-it step (the
+// judge can't tell it from the second). ok is false when the judge decides.
+func countedCheating(answer string, before, now int) (v Verdict, ok bool) {
+	switch {
+	case now >= 2 && now > before:
+		return Verdict{Check: "cheating", Level: Hint, Answer: byBranches, Text: fmt.Sprintf(
+			"Another branch for a single test value: the code now special-cases %d test values. Generalise instead of adding a branch per example.", now)}, true
+	case now == 1 && answer == "yes":
+		return Verdict{Check: "cheating", Level: OK, Answer: answer, Text: fakeItText}, true
+	}
+	return Verdict{}, false
+}
+
+// countCheating applies countedCheating to a Green's verdicts.
+func countCheating(vs []Verdict, before, now int) []Verdict {
+	for i, v := range vs {
+		if v.Check != "cheating" {
+			continue
+		}
+		if cv, ok := countedCheating(v.Answer, before, now); ok {
+			cv.Step, cv.Kind, cv.P = v.Step, v.Kind, v.P
+			vs[i] = cv
+		}
+	}
+	return vs
 }
 
 func finishRefactor(vs map[string]judge.Verdict) []Verdict {

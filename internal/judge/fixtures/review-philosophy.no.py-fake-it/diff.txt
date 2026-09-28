@@ -1,0 +1,8 @@
+diff --git a/tennis.py b/tennis.py
+index 4168d499ea08b7bae2f2fe1f5ba9e234102204be..ffc723c07bdc3d651301bf5dbaf463c662897d38 100644
+--- a/tennis.py
++++ b/tennis.py
+@@ -1,2 +1,2 @@
+ def score(p1, p2):
+-    pass
++    return "Love-All"

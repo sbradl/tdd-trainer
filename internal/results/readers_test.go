@@ -16,8 +16,8 @@ func TestReadersNormaliseFixtures(t *testing.T) {
 		want            TestState
 	}{
 		{"pytest.xml", "junit-xml", TestState{Failing: []Failure{
-			{ID: "tests.test_kata::test_add", Reason: ReasonUndecided},
-			{ID: "tests.test_kata::test_error", Reason: ReasonUndecided},
+			{ID: "tests.test_kata::test_add", Reason: ReasonAssertion},
+			{ID: "tests.test_kata::test_error", Reason: ReasonWrong},
 		}}},
 		{"pytest-collect-error.xml", "junit-xml", TestState{Failing: []Failure{
 			{ID: "test_b", Reason: ReasonWrong},
@@ -41,7 +41,7 @@ func TestReadersNormaliseFixtures(t *testing.T) {
 		{"busted-load-error.xml", "junit-xml", TestState{BuildBroken: true}},
 		{"exunit.xml", "junit-xml", TestState{Failing: []Failure{
 			{ID: "Elixir.KataTest::test add adds two numbers", Reason: ReasonUndecided},
-			{ID: "Elixir.KataTest::test add raises", Reason: ReasonUndecided},
+			{ID: "Elixir.KataTest::test add raises", Reason: ReasonUndecided}, // a crash: the judge decides
 		}}},
 		{"xunit.trx", "trx", TestState{Failing: []Failure{
 			{ID: "Kata.Tests.CalcTests::Adds", Reason: ReasonUndecided},
@@ -132,5 +132,24 @@ func TestIDStripsBustedLineNumbers(t *testing.T) {
 func TestUnknownFormat(t *testing.T) {
 	if _, err := Read("tap", nil); err == nil {
 		t.Fatal("want error")
+	}
+}
+
+func TestRaisedTypeOnlyForCodeNotReached(t *testing.T) {
+	cases := []struct {
+		issue junitIssue
+		want  string
+	}{
+		{junitIssue{Message: "NameError: name 'scor' is not defined"}, "NameError"},
+		{junitIssue{Message: "IndexError: list index out of range"}, ""}, // a crash in the code: the judge decides
+		{junitIssue{Message: "assert None == 1"}, "AssertionError"},
+		{junitIssue{Message: "Error: expect(received).toBe(expected)"}, ""},
+		{junitIssue{Message: "error: x", Text: "     ** (UndefinedFunctionError) function Wrapper.wrap/2 is undefined"}, "UndefinedFunctionError"},
+		{junitIssue{Message: "error: boom", Text: "     ** (RuntimeError) boom"}, ""},
+	}
+	for _, c := range cases {
+		if got := raisedType(c.issue); got != c.want {
+			t.Errorf("raisedType(%q) = %q, want %q", c.issue.Message, got, c.want)
+		}
 	}
 }
