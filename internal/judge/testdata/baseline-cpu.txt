@@ -1,4 +1,4 @@
-# backend CPU, reuse mode, llama.cpp b11146 (yzma v1.28.0), Qwen3.5-4B Q4_K_M, tuned (slice 12, kata sessions)
+# backend CPU, reuse mode, llama.cpp b11146 (yzma v1.28.0), Qwen3.5-4B Q4_K_M, tuned (slice 12, kata sessions, real katas)
 cheating.no                                  expect=no             got=no             p=0.943 ok
 cheating.no.ex-fake-it                       expect=no             got=no             p=0.892 ok
 cheating.no.go-fake-literal                  expect=no             got=no             p=0.937 ok
@@ -50,28 +50,31 @@ one-behaviour.yes.cs-fact                    expect=yes            got=yes      
 one-behaviour.yes.go-bowling-spare           expect=yes            got=yes            p=0.907 ok
 one-behaviour.yes.go-bowling-strike          expect=yes            got=yes            p=0.933 ok
 one-behaviour.yes.lua-empty                  expect=yes            got=yes            p=0.993 ok
-one-behaviour.yes.ts-two-asserts-same-outcome expect=yes            got=yes            p=0.996 ok
+one-behaviour.yes.py-strcalc-param-row       expect=yes            got=yes            p=0.812 ok
+one-behaviour.yes.ts-two-asserts-same-outcome expect=yes            got=yes            p=0.997 ok
 red-check.no.cs-build                        expect=no             got=no             p=0.999 ok
-red-check.no.cs-notimpl                      expect=no             got=no             p=0.943 ok
-red-check.no.ex-raise                        expect=no             got=no             p=0.955 ok
-red-check.no.ex-undefined                    expect=no             got=no             p=0.990 ok
+red-check.no.cs-notimpl                      expect=no             got=no             p=0.916 ok
+red-check.no.ex-raise                        expect=no             got=no             p=0.878 ok
+red-check.no.ex-undefined                    expect=no             got=no             p=0.982 ok
 red-check.no.fixture                         expect=no             got=no             p=0.996 ok
 red-check.no.go-no-package                   expect=no             got=no             p=0.998 ok
 red-check.no.go-other-symbol                 expect=no             got=no             p=1.000 ok
 red-check.no.go-undefined                    expect=no             got=no             p=1.000 ok
-red-check.no.import                          expect=no             got=no             p=0.998 ok
-red-check.no.lua-nil-call                    expect=no             got=no             p=0.996 ok
-red-check.no.missing-symbol                  expect=no             got=no             p=0.996 ok
-red-check.no.notimpl                         expect=no             got=no             p=0.955 ok
-red-check.no.syntax                          expect=no             got=no             p=0.992 ok
-red-check.no.ts-not-a-function               expect=no             got=no             p=0.988 ok
-red-check.yes.assert                         expect=yes            got=yes            p=0.986 ok
-red-check.yes.cs-assert                      expect=yes            got=yes            p=0.995 ok
-red-check.yes.ex-assert                      expect=yes            got=yes            p=0.976 ok
-red-check.yes.go-assert                      expect=yes            got=yes            p=0.991 ok
-red-check.yes.go-assert-marker               expect=yes            got=yes            p=0.975 ok
-red-check.yes.lua-busted                     expect=yes            got=yes            p=0.989 ok
-red-check.yes.ts-vitest                      expect=yes            got=yes            p=0.992 ok
+red-check.no.import                          expect=no             got=no             p=0.995 ok
+red-check.no.lua-nil-call                    expect=no             got=no             p=0.852 ok
+red-check.no.missing-symbol                  expect=no             got=no             p=0.997 ok
+red-check.no.notimpl                         expect=no             got=no             p=0.875 ok
+red-check.no.syntax                          expect=no             got=no             p=0.993 ok
+red-check.no.ts-not-a-function               expect=no             got=no             p=0.989 ok
+red-check.yes.assert                         expect=yes            got=yes            p=0.996 ok
+red-check.yes.cs-assert                      expect=yes            got=yes            p=0.992 ok
+red-check.yes.ex-assert                      expect=yes            got=yes            p=0.938 ok
+red-check.yes.go-assert                      expect=yes            got=yes            p=0.982 ok
+red-check.yes.go-assert-marker               expect=yes            got=yes            p=0.968 ok
+red-check.yes.go-tennis-panic                expect=yes            got=yes            p=0.971 ok
+red-check.yes.lua-busted                     expect=yes            got=yes            p=0.990 ok
+red-check.yes.py-strcalc-valueerror          expect=yes            got=yes            p=0.983 ok
+red-check.yes.ts-vitest                      expect=yes            got=yes            p=0.991 ok
 refactor-effect.improves.ex-dedupe           expect=improves       got=improves       p=0.996 ok
 refactor-effect.improves.ts-name-magic       expect=improves       got=improves       p=0.999 ok
 refactor-effect.neutral.go-quote-style       expect=neutral        got=neutral        p=0.938 ok
@@ -162,4 +165,4 @@ tpp.variable                                 expect=variable       got=variable 
 tpp.variable.cs-greet                        expect=variable       got=variable       p=0.991 ok
 tpp.variable.go-list-param                   expect=variable       got=variable       p=0.857 ok
 tpp.variable.py-return-param                 expect=variable       got=variable       p=0.947 ok
-144/163 confident and correct, 0 confident and wrong, 19 uncertain  
+147/166 confident and correct, 0 confident and wrong, 19 uncertain

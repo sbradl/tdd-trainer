@@ -1,0 +1,6 @@
+    @pytest.mark.parametrize('test_input, expected',
+                             [('//#\n1#2', 3),
+                              ])
+    def test_separator_should_be_possible_to_set(self, test_input, expected, sc):
+        """Value separator should be possible to set."""
+        assert sc.add(test_input) == expected

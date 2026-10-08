@@ -46,7 +46,7 @@ func (c *Coach) Resume(done []steps.Step, verdicts map[int][]Verdict) error {
 		if err != nil {
 			return err
 		}
-		_, sourceDiff, _ := split(diffs)
+		_, sourceDiff := split(diffs)
 		var files []string
 		for _, d := range diffs {
 			if d.Kind == config.Source {

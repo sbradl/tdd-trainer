@@ -1,0 +1,21 @@
+=== RUN   TestAWINAndBGot40PointWithSetPoint
+--- FAIL: TestAWINAndBGot40PointWithSetPoint (0.00s)
+panic: runtime error: index out of range [5] with length 5 [recovered, repanicked]
+
+goroutine 31 [running]:
+testing.tRunner.func1.2({0x6ca8f0, 0x23830e16c000})
+	/usr/lib/go/src/testing/testing.go:2123 +0x232
+testing.tRunner.func1()
+	/usr/lib/go/src/testing/testing.go:2126 +0x329
+panic({0x6ca8f0?, 0x23830e16c000?})
+	/usr/lib/go/src/runtime/panic.go:859 +0x125
+tennis/tennis.pointToString(...)
+	/work/tennis/score.go:55
+tennis/tennis.(*ScoreBoard).AGetPoint(0x4edc60?)
+	/work/tennis/score.go:21 +0x1af
+tennis/tennis.TestAWINAndBGot40PointWithSetPoint(0x23830e165d48)
+	/work/tennis/score_test.go:169 +0x6f
+testing.tRunner(0x23830e165d48, 0x6d6088)
+	/usr/lib/go/src/testing/testing.go:2193 +0xea
+created by testing.(*T).Run in goroutine 1
+	/usr/lib/go/src/testing/testing.go:2258 +0x4d4

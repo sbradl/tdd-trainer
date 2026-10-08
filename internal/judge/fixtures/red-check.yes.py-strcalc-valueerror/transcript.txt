@@ -1,0 +1,32 @@
+ValueError: invalid literal for int() with base 10: '//#'
+self = <test_sc.TestStringCalculator object at 0x7ff7f306f410>
+test_input = '//#\n1#2', expected = 3
+sc = <sc.StringCalculator object at 0x7ff7f34c46d0>
+
+    @pytest.mark.parametrize('test_input, expected',
+                             [('//#\n1#2', 3),
+                              ])
+    def test_separator_should_be_possible_to_set(self, test_input, expected, sc):
+        """Value separator should be possible to set."""
+>       assert sc.add(test_input) == expected
+               ^^^^^^^^^^^^^^^^^^
+
+test_sc.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+sc.py:10: in add
+    int_vals = self._convert_vals_to_ints(str_vals)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sc.py:28: in _convert_vals_to_ints
+    return [StringCalculator._string_to_number(v) for v in vals]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = '//#'
+
+    @staticmethod
+    def _string_to_number(value: str) -> int:
+>       return int(value)
+               ^^^^^^^^^^
+E       ValueError: invalid literal for int() with base 10: '//#'
+
+sc.py:16: ValueError

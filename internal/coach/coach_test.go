@@ -336,6 +336,28 @@ func TestLongTestGetsSizeHint(t *testing.T) {
 	}
 }
 
+func TestRedEvidenceIsTheNewTestOnly(t *testing.T) {
+	sc := &scripted{evidence: map[string]string{}, answers: map[string]string{"one-behaviour": "yes"}}
+	k := newKata(t, sc)
+	k.write("kata.go", "package kata\n\nfunc Roman(n int) string { return \"I\" }\n")
+	long := "\nfunc TestOne(t *testing.T) {\n" + strings.Repeat("\t_ = 1\n", 20) + "\tif Roman(1) != \"I\" {\n\t\tt.Fatal()\n\t}\n}\n"
+	k.write("kata_test.go", header+long)
+	k.run("TestOne")
+	// the Red re-indents TestOne while adding TestTwo
+	k.write("kata_test.go", header+strings.ReplaceAll(long, "\t", "    ")+test("TestTwo", "2", "II"))
+	k.run("TestOne TestTwo", "TestTwo")
+	k.drain()
+	ev := sc.evidence["one-behaviour"]
+	if !strings.Contains(ev, "func TestTwo") || strings.Contains(ev, "_ = 1") {
+		t.Fatalf("one-behaviour saw %q", ev)
+	}
+	for _, v := range k.got {
+		if v.Check == "test size" {
+			t.Fatalf("re-indented TestOne counted: %s", v.Text)
+		}
+	}
+}
+
 func TestNewTestFileBoilerplateIsNotTestSize(t *testing.T) {
 	k := newKata(t, nil)
 	k.write("kata.go", "package kata\n")

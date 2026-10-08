@@ -263,7 +263,7 @@ func (c *Coach) Step(s steps.Step) error {
 			return err
 		}
 	}
-	testDiff, sourceDiff, testAdded := split(diffs)
+	testDiff, sourceDiff := split(diffs)
 	exact := func(check string, l Level, text string) {
 		c.emit(Verdict{Step: s.N, Kind: s.Kind, Check: check, Level: l, Text: text, Exact: true})
 	}
@@ -276,11 +276,16 @@ func (c *Coach) Step(s steps.Step) error {
 		if len(s.NewTests) == 1 {
 			exact("new tests", OK, "Exactly one new failing test: "+s.NewTests[0]+".")
 		}
+		tests, err := c.store.Files(s.To, config.Test)
+		if err != nil {
+			return err
+		}
+		code, testAdded := newTestCode(diffs, tests, s.NewTests)
 		if testAdded > MaxTestLines {
 			exact("test size", Hint, fmt.Sprintf("The new test adds %d lines. A smaller test makes a smaller step: can you test less at once?", testAdded))
 		}
 		ev := judge.Evidence{
-			judge.PartTest:       addedLines(testDiff),
+			judge.PartTest:       code,
 			judge.PartTranscript: transcript(s),
 		}
 		if err := c.keepRed(s); err != nil {
@@ -428,19 +433,18 @@ func JoinFiles(files map[string]string) string {
 	return b.String()
 }
 
-// split joins the patches by kind and counts added test lines.
-func split(diffs []snapshot.FileDiff) (test, source string, testAdded int) {
+// split joins the patches by kind.
+func split(diffs []snapshot.FileDiff) (test, source string) {
 	var t, s strings.Builder
 	for _, d := range diffs {
 		switch d.Kind {
 		case config.Test:
 			t.WriteString(d.Patch)
-			testAdded += testLines(d.Patch)
 		case config.Source:
 			s.WriteString(d.Patch)
 		}
 	}
-	return t.String(), s.String(), testAdded
+	return t.String(), s.String()
 }
 
 // fileHeader matches lines that only declare a file's package, module or
@@ -468,7 +472,7 @@ func testLines(patch string) int {
 	return n
 }
 
-// addedLines extracts the added lines of a unified diff: the new test.
+// addedLines extracts the added lines of a unified diff.
 func addedLines(patch string) string {
 	var out []string
 	for _, l := range strings.Split(patch, "\n") {
