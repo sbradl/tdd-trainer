@@ -120,6 +120,7 @@ structural.no.ts-default-changed             expect=no             got=no       
 structural.yes                               expect=yes            got=yes            p=0.906 ok
 structural.yes.cs-extract-method             expect=yes            got=yes            p=0.988 ok
 structural.yes.ex-pipe                       expect=yes            got=yes            p=0.976 ok
+structural.yes.go-named-result               expect=yes            got=uncertain      p=0.551 MISS
 test-duplicated.no.ex-second-word-count      expect=no             got=no             p=0.968 ok
 test-duplicated.no.go-roman-helper           expect=no             got=uncertain      p=0.548 MISS
 test-duplicated.no.go-table-case-added       expect=no             got=no             p=0.934 ok
@@ -165,4 +166,4 @@ tpp.variable                                 expect=variable       got=variable 
 tpp.variable.cs-greet                        expect=variable       got=variable       p=0.991 ok
 tpp.variable.go-list-param                   expect=variable       got=variable       p=0.857 ok
 tpp.variable.py-return-param                 expect=variable       got=variable       p=0.947 ok
-147/166 confident and correct, 0 confident and wrong, 19 uncertain
+147/167 confident and correct, 0 confident and wrong, 20 uncertain

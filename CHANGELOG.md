@@ -8,6 +8,10 @@
   - **A Red is judged on the new test only.** Learners often tidy, rename or re-indent other tests in the same save. All of that used to count as the new test: it got "checks more than one behaviour", and a re-indented `describe` made "The new test adds 80 lines". Now the new test is found by name in the test file. For a new row of a parameterised test, the judge sees the whole test, and only the added row counts towards its size.
   - **A crash inside the code under test is the right reason to fail.** A new test that makes the code panic (index out of range) or raise a `ValueError` proves the behaviour is missing, just like a failed assertion. A stub that only throws "not implemented" and a missing function are still the wrong reason.
 
+### Fixes
+
+- **Go: a lint finding no longer breaks the build.** The Go preset checked the build with `go vet ./...`, which also fails on findings such as "unreachable code", the usual leftover of a fake-it `return` above the old code. `tddt` then said "build broken" while `go test` ran fine. The build step now runs only the vet checks `go test` runs itself. An existing `.tddtrainer.yml` keeps its old `build:` line: copy the new one from `tddt init --preset go` in an empty folder, or edit it by hand.
+
 ## 2026-09-28
 
 ### Sessions

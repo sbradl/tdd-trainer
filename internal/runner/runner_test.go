@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sbradl/tdd-trainer/internal/config"
+	"github.com/sbradl/tdd-trainer/internal/preset"
 	"github.com/sbradl/tdd-trainer/internal/results"
 )
 
@@ -58,6 +59,34 @@ func TestRunBuildBrokenByBuildCmd(t *testing.T) {
 	dir := kata(t, "", addTest) // Add undefined
 	st := mustRun(t, goCfg, dir)
 	if !st.BuildBroken {
+		t.Fatalf("want build broken, got %v", st)
+	}
+}
+
+// goPreset is the config tddt init writes for Go.
+func goPreset(t *testing.T) config.Config {
+	t.Helper()
+	p, _ := preset.ByName("go")
+	out, err := p.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := config.Parse(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func TestGoPresetBuildBrokenOnlyWhenGoTestWouldBe(t *testing.T) {
+	// a fake-it return left above the old code: go vet reports unreachable
+	// code, go test runs fine
+	dir := kata(t, "func Add(a, b int) int {\n\treturn 3\n\treturn a + b\n}\n", addTest)
+	if st := mustRun(t, goPreset(t), dir); st.BuildBroken || !st.Green() {
+		t.Fatalf("want green, got %v", st)
+	}
+	dir = kata(t, "", addTest) // Add undefined
+	if st := mustRun(t, goPreset(t), dir); !st.BuildBroken {
 		t.Fatalf("want build broken, got %v", st)
 	}
 }

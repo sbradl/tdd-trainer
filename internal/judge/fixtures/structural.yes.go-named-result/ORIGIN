@@ -1,0 +1,1 @@
+Rewritten from a real cyber-dojo session (github.com/alces/cyber-dojo-lcd-digits, no licence): named result type replaces explicit returns; the dropped default returned the zero value. Live: structural=no p=0.919.

@@ -278,7 +278,8 @@ Use r/g/f when the coach misreads what you are doing. A short message confirms t
 
 ```yaml
 preset: go
-build: go vet ./...              # optional; a failure means "build broken"
+# optional; a failure means "build broken". Go: only the vet checks go test runs itself
+build: go vet -atomic -bool -buildtags -directive -errorsas -ifaceassert -nilfunc -printf -stringintconv -tests ./...
 test:
   cmd: go test -json ./...
   windows: go test -json ./...   # optional override for Windows
