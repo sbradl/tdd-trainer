@@ -351,12 +351,12 @@ func (c *Coach) Step(s steps.Step) error {
 		if strings.TrimSpace(sourceDiff+testDiff) == "" {
 			return nil
 		}
-		diff := sourceDiff
-		if strings.TrimSpace(diff) == "" {
+		diff, testsOnly := sourceDiff, strings.TrimSpace(sourceDiff) == ""
+		if testsOnly {
 			diff = testDiff // test refactoring is judged like production code
 		}
 		c.enqueue(&job{prio: prioRefactor, step: s.N, kind: s.Kind, ev: judge.Evidence{judge.PartDiff: diff},
-			gates: []string{"structural", "refactor-effect"}, finish: finishRefactor})
+			gates: []string{"structural", "refactor-effect"}, finish: finishRefactor(testsOnly)})
 	}
 	return nil
 }

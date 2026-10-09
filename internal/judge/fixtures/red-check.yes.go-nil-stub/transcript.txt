@@ -1,0 +1,18 @@
+=== RUN   TestNewQueueIsEmpty
+--- FAIL: TestNewQueueIsEmpty (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x5c43f5]
+
+goroutine 8 [running]:
+testing.tRunner.func1.2({0x82be80, 0x8a45a0})
+	/usr/lib/go/src/testing/testing.go:2123 +0x232
+testing.tRunner.func1()
+	/usr/lib/go/src/testing/testing.go:2126 +0x329
+panic({0x82be80?, 0x8a45a0?})
+	/usr/lib/go/src/runtime/panic.go:859 +0x125
+kata.TestNewQueueIsEmpty(0xe73240fe6c8)
+	/work/queue_test.go:10 +0x15
+testing.tRunner(0xe73240fe6c8, 0x858d10)
+	/usr/lib/go/src/testing/testing.go:2193 +0xea
+created by testing.(*T).Run in goroutine 1
+	/usr/lib/go/src/testing/testing.go:2258 +0x4d4

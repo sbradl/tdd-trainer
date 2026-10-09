@@ -1,0 +1,4 @@
+func TestNewQueueIsEmpty(t *testing.T) {
+    queue := NewQueue()
+    assert.Equal(t, 0, queue.length)
+}

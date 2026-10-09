@@ -162,25 +162,35 @@ func countCheating(vs []Verdict, before, now int) []Verdict {
 	return vs
 }
 
-func finishRefactor(vs map[string]judge.Verdict) []Verdict {
-	var out []Verdict
-	st := vs["structural"]
-	if st.Answer == "no" {
-		out = append(out, gateVerdict(st, Warn, "This refactoring seems to change what the code computes; refactorings keep behaviour exactly."))
-	} else {
-		out = append(out, gateVerdict(st, OK, "Only the structure changed; the code computes the same as before."))
+// finishRefactor judges a refactoring of the production code or, with
+// testsOnly, of the tests alone. Whether rewritten code still computes the
+// same is hard for the judge (half its confident "no"s on production code
+// were wrong in real katas), so there it is a hint; changed test examples
+// it sees reliably.
+func finishRefactor(testsOnly bool) func(map[string]judge.Verdict) []Verdict {
+	return func(vs map[string]judge.Verdict) []Verdict {
+		var out []Verdict
+		st := vs["structural"]
+		switch {
+		case st.Answer == "no" && testsOnly:
+			out = append(out, gateVerdict(st, Warn, "This refactoring seems to change what the tests check; refactorings keep behaviour exactly."))
+		case st.Answer == "no":
+			out = append(out, gateVerdict(st, Hint, "This refactoring may change what the code computes: check that every input still gives the same result, or add a test that shows it."))
+		default:
+			out = append(out, gateVerdict(st, OK, "Only the structure changed; the code computes the same as before."))
+		}
+		eff := vs["refactor-effect"]
+		switch eff.Answer {
+		case "worsens":
+			out = append(out, gateVerdict(eff, Hint, "This refactoring makes the code harder to read or change."))
+		default:
+			out = append(out, gateVerdict(eff, OK, map[string]string{
+				"improves": "The code is easier to read or change afterwards.",
+				"neutral":  "About as readable as before: no clear gain or loss.",
+			}[eff.Answer]))
+		}
+		return out
 	}
-	eff := vs["refactor-effect"]
-	switch eff.Answer {
-	case "worsens":
-		out = append(out, gateVerdict(eff, Hint, "This refactoring makes the code harder to read or change."))
-	default:
-		out = append(out, gateVerdict(eff, OK, map[string]string{
-			"improves": "The code is easier to read or change afterwards.",
-			"neutral":  "About as readable as before: no clear gain or loss.",
-		}[eff.Answer]))
-	}
-	return out
 }
 
 var lensTitle = map[string]string{

@@ -945,3 +945,19 @@ func TestAnotherBranchPerExampleIsTestSpecific(t *testing.T) {
 		t.Fatalf("got %+v", v)
 	}
 }
+
+func TestBehaviourChangeIsAHintForCodeAndAWarningForTests(t *testing.T) {
+	vs := map[string]judge.Verdict{
+		"structural":      {Gate: "structural", Answer: "no", P: 0.95},
+		"refactor-effect": {Gate: "refactor-effect", Answer: "neutral", P: 0.9},
+	}
+	for _, c := range []struct {
+		testsOnly bool
+		want      Level
+	}{{false, Hint}, {true, Warn}} {
+		out := finishRefactor(c.testsOnly)(vs)
+		if out[0].Check != "structural" || out[0].Level != c.want {
+			t.Errorf("tests only %v: got %+v, want level %v", c.testsOnly, out[0], c.want)
+		}
+	}
+}

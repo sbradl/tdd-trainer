@@ -7,6 +7,8 @@
 - **Checked against real kata histories.** Public kata repositories (string calculator in TypeScript and Python, bowling in Python, tennis in Go, Mars Rover in JavaScript) were replayed save by save through `tddt`:
   - **A Red is judged on the new test only.** Learners often tidy, rename or re-indent other tests in the same save. All of that used to count as the new test: it got "checks more than one behaviour", and a re-indented `describe` made "The new test adds 80 lines". Now the new test is found by name in the test file. For a new row of a parameterised test, the judge sees the whole test, and only the added row counts towards its size.
   - **A crash inside the code under test is the right reason to fail.** A new test that makes the code panic (index out of range) or raise a `ValueError` proves the behaviour is missing, just like a failed assertion. A stub that only throws "not implemented" and a missing function are still the wrong reason.
+  - **A nil pointer panic counts too.** A stub that returns `nil`, so that the new test panics on it, is a proper Red.
+- **"Behaviour unchanged" is a hint for production code.** Replayed katas showed the judge can't reliably tell whether rewritten code still computes the same: half of its warnings on production-code refactorings were false (a named result, a restructured loop). It now says the refactoring *may* change the result and to check it or add a test. A refactoring of the tests alone that changes what they check (say, replacing test examples) still gets the warning.
 
 ### Fixes
 

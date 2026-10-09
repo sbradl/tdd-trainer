@@ -1,0 +1,1 @@
+Rewritten from a real cyber-dojo session (github.com/alces/cyber-dojo-lifo, no licence): the stub returns nil and the test panics on it. Live: red-check=no p=0.851. Right reason by ruling 2026-10-09.
